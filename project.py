@@ -12,7 +12,7 @@ import os
 
 from flask_jwt import JWT, jwt_required, current_identity
 from flask_jwt_extended import JWTManager
-from flask_jwt_extended import (verify_jwt_in_request, set_access_cookies, set_refresh_cookies, unset_jwt_cookies, create_access_token, create_refresh_token, jwt_required, jwt_refresh_token_required, get_jwt_identity, get_raw_jwt)
+from flask_jwt_extended import (jwt_optional, verify_jwt_in_request, set_access_cookies, set_refresh_cookies, unset_jwt_cookies, create_access_token, create_refresh_token, jwt_required, jwt_refresh_token_required, get_jwt_identity, get_raw_jwt)
 import pymongo
 from flask_jwt_extended.view_decorators import _decode_jwt_from_request
 from functools import wraps
