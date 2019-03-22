@@ -148,7 +148,50 @@ class GetQuestion(Resource):
 
 
 
+class AddAnswer(Resource):
+	#add an answer to the question with the given id
+	#params:
+	#	body: string
+	#opt	media: array of media IDs
+	#return:
+	#	status: "OK" or "error"
+	#	id: answer id (if OK)
+	#	error: message string (if error)
+	@custom_validator
+	def post(self, id):
+		return jsonify(status="error",error="incomplete")
 
+class GetAnswers(Resource):
+	#get all answers for the question with the given id
+	#params:
+	#	none
+	#return:
+	#	status: "OK" or "error"
+	#	answers: array of ANSWERS
+	#		{id: string
+	#		user: id of poster
+	#		body: string
+	#		score: int
+	#		is_accepted: boolean
+	#		timestamp: unix timestamp
+	#		media: array of media IDs},...
+	#	error: message stirng (if error)
+	@jwt_optional
+	def get(self, id):
+		return jsonify(status="error", error="incomplete")
+class SearchQuestion(Resource):
+	#search for questions
+	#params:
+	#opt	timestamp: only questions from this time or earlier (default=now)
+	#opt	limit: max number of questions to return (default=25, max=100)
+	#opt	accepted: only return questions with accepted answers (default=False)
+	#return:
+	#	status: "OK" or "error"
+	#	questions: Array of question objects
+	#	error: message string (only if status="error")
+	@jwt_optional
+	def post(self):
+		return jsonify(status="error",error="incomplete")
 
 
 
@@ -196,5 +239,9 @@ api.add_resource(LogoutUser2, '/logout2')
 api.add_resource(TokenRefresh, '/refresh')
 api.add_resource(AddQuestion, '/questions/add')
 api.add_resource(GetQuestion, '/questions/<id>')
+api.add_resource(AddAnswer, '/questions/<id>/answers/add')
+api.add_resource(GetAnswers, '/questions/<id>/answers')
+api.add_resource(SearchQuestion, '/search')
+
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', debug=True)
