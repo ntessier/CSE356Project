@@ -18,7 +18,7 @@ from flask_jwt_extended.view_decorators import _decode_jwt_from_request
 from functools import wraps
 
 from bson.json_util import loads, dumps
-
+import time
 from addUser import AddUser, VerifyUser
 #from login import LoginUser, LogoutUser, TokenRefresh
 from mongoConnection import getMongoClient
@@ -48,7 +48,7 @@ def custom_validator(fn):
 		try:
 			verify_jwt_in_request()
 		except NoAuthorizationError:
-			return jsonify(status="ERROR")
+			return jsonify(status="ERROR", error="Trying to access page that requires login")
 		return fn(*args, **kwargs)   
 	return wrapper
 
@@ -80,19 +80,13 @@ class LoginUser(Resource):
 			return jsonify(status="ERROR")
 		else:
 			if row1['password'] == password and row1['validated'] is True:
-				print("Made it into the equal password conditional")
-				#row1 = dumps(row1)
 				access_token = create_access_token(identity=row1['username'])
 				refresh_token = create_refresh_token(identity=row1['username'])
-				print("Right above the update_one to set the access token and refresh token")
 				mycol.update_one(myquery, {"$set": {"access_token" : access_token} })
 				mycol.update_one(myquery, {"$set": {"refresh_token" : refresh_token} })
-				print("right past the update_one to set the access token and refresh token")
 				resp = jsonify({"status":"OK"})
 				set_access_cookies(resp, access_token)
 				set_refresh_cookies(resp, refresh_token)
-				print("made it past setting access cookies and refresh cookies")
-				print(str(resp))
 				return resp
 			else:
 				return jsonify(status="ERROR")
@@ -109,6 +103,58 @@ class AddQuestion(Resource):
 		title = json['title']
 		body = json['body']
 		tags = json['tags']
+		client = getMongoClient()
+		db = client["Project"]
+		col = db["questions"]
+		dToInsert = {}
+		dToInsert['title'] = title
+		dToInsert['body'] = body
+		dToInsert['tags'] = tags
+		dToInsert['score'] = 0
+		dToInsert['view_count'] = 0
+		dToInsert['answer_count'] = 0
+		dToInsert['timestamp'] = time.time() #time.time() should be a unix timestamp
+		dToInsert['media'] = None #might not be necessary right now bc its future milestone
+		dToInsert['accepted_answer_id'] = None
+		dToInsert['id'] = col.count() + 1 #avoid zero indexing on the IDs 
+		col.insert_one(dToInsert)
+		return jsonify(status="OK", id=dToInsert['id'])
+
+class GetQuestion(Resource):
+	@jwt_optional
+	def get(self, id):
+		visit = {}
+		username = get_jwt_identity()
+		if username is None: #then we should check their IP 
+			visit['identifier'] = request.environ.get('HTTP_X_REAL_IP', request.remote_addr) #proxy_set_header   X-Real-IP            $remote_addr;
+		else:
+			visit['identifier'] = username 
+		client = getMongoClient()
+		db = client["Project"]
+		col = db["visits"]
+		questions = db['questions']
+		if questions.count(myquery) == 0:
+			return jsonify(status="ERROR", error="No existing question ID")
+		myquery = {"id" : id}
+		myquery2 = {"id" : id, "identifier": visit['identifier']}
+		question = questions.find_one(myquery)
+		if col.count(myquery2) == 0: #unique visit!
+			visit['id'] = id
+			col.insert_one(visit)
+			question['view_count'] = question['view_count'] + 1
+			questions.update_one(myquery, { "$set": { "view_count" : question['view_count']} } )
+
+		return jsonify(status="OK", question=question)
+
+
+
+
+
+
+
+
+
+
 
 blacklist = set()
 @jwt.token_in_blacklist_loader
@@ -148,5 +194,7 @@ api.add_resource(LoginUser, '/login')
 api.add_resource(LogoutUser, '/logout')
 api.add_resource(LogoutUser2, '/logout2')
 api.add_resource(TokenRefresh, '/refresh')
+api.add_resource(AddQuestion, '/questions/add')
+api.add_resource(GetQuestion, '/questions/<id>')
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', debug=True)
