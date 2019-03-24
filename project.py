@@ -77,7 +77,7 @@ class LoginUser(Resource):
 		row1 = mycol.find_one(myquery)
 		print("Made it past the row1 find_one(myquery)")
 		if mycol.count(myquery) == 0:
-			return jsonify(status="ERROR")
+			return jsonify(status="error")
 		else:
 			if row1['password'] == password and row1['validated'] is True:
 				access_token = create_access_token(identity=row1['username'])
@@ -99,7 +99,7 @@ class AddQuestion(Resource):
 		if request.is_json:
 			json = request.get_json()
 		else:
-			return jsonify(status="ERROR", error="Request isn't json")
+			return jsonify(status="error", error="Request isn't json")
 		title = json['title']
 		body = json['body']
 		tags = json['tags']
@@ -134,7 +134,7 @@ class GetQuestion(Resource):
 		col = db["visits"]
 		questions = db['questions']
 		if questions.count(myquery) == 0:
-			return jsonify(status="ERROR", error="No existing question ID")
+			return jsonify(status="error", error="No existing question ID")
 		myquery = {"id" : id}
 		myquery2 = {"id" : id, "identifier": visit['identifier']}
 		question = questions.find_one(myquery)
@@ -159,8 +159,29 @@ class AddAnswer(Resource):
 	#	error: message string (if error)
 	@custom_validator
 	def post(self, id):
-		return jsonify(status="error",error="incomplete")
+		if request.is_json:
+			json = request.get_json()
+		else:
+			return jsonify(status="error", error="Request isn't json")
+		body = json['body']
+		media = []
+		if 'media' in json:
+			media = json['media']
 
+		client = getMongoClient()
+		db = client["Project"]
+		col = db["answers"]	#TODO: need to add this collection to the DB?
+		dToInsert = {}
+		dToInsert['id'] = col.count() + 1
+		dToInsert['user'] = None	#TODO: How to get ID?
+		dToInsert['body'] = body
+		dToInsert['score'] = 0
+		dToInsert['is_accepted'] = False
+		dToInsert['timestamp'] = time.time()
+		dToInsert['media'] = media
+		col.insert_one(dToInsert)
+
+		return jsonify(status="OK",id=str(dToInsert['id']))  
 class GetAnswers(Resource):
 	#get all answers for the question with the given id
 	#params:
@@ -179,6 +200,8 @@ class GetAnswers(Resource):
 	@jwt_optional
 	def get(self, id):
 		return jsonify(status="error", error="incomplete")
+		#TODO: how to relate a question to its answers?
+		#TODO: possible: add array of answer IDs to a question
 class SearchQuestion(Resource):
 	#search for questions
 	#params:
@@ -191,12 +214,55 @@ class SearchQuestion(Resource):
 	#	error: message string (only if status="error")
 	@jwt_optional
 	def post(self):
-		return jsonify(status="error",error="incomplete")
+		if request.is_json:
+			json = request.get_json()
+		else:
+			return jsonify(status="error", error="Request isn't json")
+		#defaults
+		timestamp = time.time()
+		limit = 25
+		accepted = "False"	#keep parameters as a string
 
-
-
-
-
+		#q = ""		
+		#sort_by = "score"
+		#tags = []
+		#has_media = "False"
+		
+		if 'timestamp' in json:
+			timestamp = json['timestamp']
+		if 'limit' in json:
+                        limit = json['limit']
+			if limit > 100:
+				limit = 100
+			if limit < 1:
+				limit = 1
+		if 'accepted' in json:
+                        timestamp = json['accepted']
+		
+		results = [] #array of questions
+		
+		client = getMongoClient()
+		db = client["Project"]
+		col = db["questions"]
+		#if accepted == "False":
+		#	my_cursor = col.find({"timestamp": {"$lt": timestamp}}).sort("score")
+		#else:
+		#	my_cursor = col.find({"timestamp": {"$lt": timestamp}, "accepted_answer_id": {"$ne": None}}).sort("score")
+		
+		my_query = {"timestamp": {"$lt": timestamp}}
+		
+		#if "accepted" param is on, only give questions where acc_id is not None
+		if accepted != "False":
+			my_query["accepted_answer_id"] = {"$ne": None}	
+		
+		my_cursor = col.find(my_query).sort("score")
+ 		for i in range(limit):
+			question_element = my_cursor.hasNext() ? myCursor.next() : None
+			if not question_element:
+				break
+			else:
+				results.append(question_element)
+		return jsonify(status = "OK", questions = results)
 
 
 blacklist = set()
