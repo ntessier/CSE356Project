@@ -1,5 +1,3 @@
-#TODO: PART3: Need a way to store the user's current game and past games in the databse
-
 from flask import Flask, jsonify, request, render_template, make_response
 from flask_cors import CORS
 from flask_restful import Resource, Api, reqparse
@@ -117,6 +115,7 @@ class AddQuestion(Resource):
 		dToInsert['media'] = None #might not be necessary right now bc its future milestone
 		dToInsert['accepted_answer_id'] = None
 		dToInsert['id'] = col.count() + 1 #avoid zero indexing on the IDs 
+		dToInsert['answers'] = []	#empty array of answer IDs
 		col.insert_one(dToInsert)
 		return jsonify(status="OK", id=dToInsert['id'])
 
@@ -172,15 +171,24 @@ class AddAnswer(Resource):
 		db = client["Project"]
 		col = db["answers"]	#TODO: need to add this collection to the DB?
 		dToInsert = {}
-		dToInsert['id'] = col.count() + 1
-		dToInsert['user'] = None	#TODO: How to get ID?
+		answer_id = col.count()+1
+		dToInsert['id'] = answer_id
+		dToInsert['user'] = None	#TODO: How to get ID? get the username from jwt
 		dToInsert['body'] = body
 		dToInsert['score'] = 0
 		dToInsert['is_accepted'] = False
 		dToInsert['timestamp'] = time.time()
 		dToInsert['media'] = media
 		col.insert_one(dToInsert)
-
+		
+		#add this answer to the question's answer list
+		questions = db["questions"]
+		myquery = {'id' : id}
+		question = questions.find_one(myquery)
+		question['answers'].append(answer_id)
+		questions.update_one(myquery, {"$set": {"answers" : question['answers']
+		
+		
 		return jsonify(status="OK",id=str(dToInsert['id']))  
 class GetAnswers(Resource):
 	#get all answers for the question with the given id
@@ -200,8 +208,28 @@ class GetAnswers(Resource):
 	@jwt_optional
 	def get(self, id):
 		return jsonify(status="error", error="incomplete")
-		#TODO: how to relate a question to its answers?
-		#TODO: possible: add array of answer IDs to a question
+		#get every answer from the question's "answers" array
+		client = getMongoClient()
+		db = client["Project"]
+		questions = db["questions"]
+		myquery = {"id" : id}
+		
+		question = questions.find_one(myquery)
+		
+		if not question:
+			return jsonify(status="error", error="No question with given ID")
+		
+		
+		#get all answers from that question
+		results = []
+		answer_col = db["answers"]
+		for answerID in question["answers"]:
+			myquery2 = {"id" : answerID}
+			answer = answer_col.find_one(myquery2)
+			results.append(answer) 
+		
+		return jsonify(answers=results, status="OK")
+
 class SearchQuestion(Resource):
 	#search for questions
 	#params:
@@ -264,6 +292,9 @@ class SearchQuestion(Resource):
 				results.append(question_element)
 		return jsonify(status = "OK", questions = results)
 
+	def get(self):
+		#TODO: render UI page
+		return "hello search"
 
 blacklist = set()
 @jwt.token_in_blacklist_loader
