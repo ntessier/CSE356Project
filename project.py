@@ -169,11 +169,11 @@ class AddAnswer(Resource):
 
 		client = getMongoClient()
 		db = client["Project"]
-		col = db["answers"]	#TODO: need to add this collection to the DB?
+		col = db["answers"]	
 		dToInsert = {}
 		answer_id = col.count()+1
 		dToInsert['id'] = answer_id
-		dToInsert['user'] = None	#TODO: How to get ID? get the username from jwt
+		dToInsert['user'] = get_jwt_identity()	
 		dToInsert['body'] = body
 		dToInsert['score'] = 0
 		dToInsert['is_accepted'] = False
