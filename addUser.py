@@ -4,13 +4,9 @@ import pymongo
 import json
 import random
 import string
-import smtplib
+import smtplib, ssl
 from mongoConnection import getMongoClient
 #import logging
-server = smtplib.SMTP('smtp.gmail.com', 587)
-server.ehlo()
-server.starttls()
-server.login("warmupproject2@gmail.com", "dummyemail")
 
 parser1 = reqparse.RequestParser()
 parser1.add_argument('email')
@@ -20,11 +16,19 @@ parser1.add_argument('password')
 
 class AddUser(Resource):
 	def post(self):
+		
+		server = smtplib.SMTP('smtp.gmail.com', 587)
+		server.ehlo()
+		server.starttls(context = ssl.create_default_context())
+		server.ehlo()
+		server.login("warmupproject2@gmail.com", "dummyemail")
+
+
 		args = parser1.parse_args()
 		username = args['username']
 		password = args['password']
 		email = args['email']
-		print("username: " + username + "password: " + password + "email: " + email)
+		print("username: " + username + " password: " + password + " email: " + email)
 
 		myclient = getMongoClient()
 		mydb = myclient["Project"]
@@ -42,14 +46,17 @@ class AddUser(Resource):
 			dataToInsert['email'] = email 
 			dataToInsert['validated'] = False
 			dataToInsert['verificationCode'] = getKey()
+			dataToInsert['reputation'] = 0
 			mycol.insert_one(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			msg = "\nHello " + username + "!\n Please click this link to\
 			verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
 			server.sendmail("warmupproject2@gmail.com", email, msg2)
+			print("SENT MAIL SUCCESSFULY\n")
+			server.quit()
 			return jsonify(status="OK")
 		else:
-			return jsonify(status="ERROR", error="Account already exists!")
+			return jsonify(status="error", error="Account already exists!")
 	def get(self):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('adduser.html'), headers)
@@ -69,13 +76,16 @@ class VerifyUser(Resource):
 			print("user not found")
 		else:
 			if row['validated'] is False and row['verificationCode'] == key:
+				print("\n VALIDATED WITH CODE")
 				mycol.update_one(myquery, { "$set": { "validated" : True} })
 				return jsonify(status="OK")
 			elif row['validated'] is False and key == 'abracadabra':
+				print("\n VALIDATED SUCCESSFULLY WITH BACKDOOR")
 				mycol.update_one(myquery, { "$set": { "validated" : True} })
 				return jsonify(status="OK")
 			else:
-				return jsonify(status="ERROR", error="VerificationCode doesn't match or user is already validated!")
+				print("\nVALIDATION ERROR")
+				return jsonify(status="error", error="VerificationCode doesn't match or user is already validated!")
 
 			
 

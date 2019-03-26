@@ -46,7 +46,7 @@ def custom_validator(fn):
 		try:
 			verify_jwt_in_request()
 		except NoAuthorizationError:
-			return jsonify(status="ERROR", error="Trying to access page that requires login")
+			return jsonify(status="error", error="Trying to access page that requires login")
 		return fn(*args, **kwargs)   
 	return wrapper
 
@@ -68,13 +68,14 @@ class LoginUser(Resource):
 		username = args['username']
 		password = args['password']
 		myclient = getMongoClient()
-		mydb = myclient["wp2"]
+		mydb = myclient["Project"]
 		mycol = mydb["users"]
 		myquery = {"username": username}
 		print("Made it in this loginuser method")
 		row1 = mycol.find_one(myquery)
 		print("Made it past the row1 find_one(myquery)")
 		if mycol.count(myquery) == 0:
+			print("no login found")
 			return jsonify(status="error")
 		else:
 			if row1['password'] == password and row1['validated'] is True:
@@ -87,7 +88,7 @@ class LoginUser(Resource):
 				set_refresh_cookies(resp, refresh_token)
 				return resp
 			else:
-				return jsonify(status="ERROR")
+				return jsonify(status="error")
 	def get(self):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('login.html'), headers)
@@ -98,6 +99,13 @@ class AddQuestion(Resource):
 			json = request.get_json()
 		else:
 			return jsonify(status="error", error="Request isn't json")
+		if not "title" in json:
+			return jsonify(status="error", error="Missing parameter: title")
+		if not "body" in json:
+                        return jsonify(status="error", error="Missing parameter: title")
+		if not "tags" in json:
+			json['tags'] = []
+			#return jsonify(status="error", error="Missing parameter: tags")
 		title = json['title']
 		body = json['body']
 		tags = json['tags']
@@ -108,6 +116,7 @@ class AddQuestion(Resource):
 		dToInsert['title'] = title
 		dToInsert['body'] = body
 		dToInsert['tags'] = tags
+		dToInsert['user'] = {'username': get_jwt_identity(), 'reputation': 0} #TODO: search for user to find actual reputation
 		dToInsert['score'] = 0
 		dToInsert['view_count'] = 0
 		dToInsert['answer_count'] = 0
@@ -132,18 +141,20 @@ class GetQuestion(Resource):
 		db = client["Project"]
 		col = db["visits"]
 		questions = db['questions']
+		myquery = {"id" : int(id)}
+		myquery2 = {"id" : int(id), "identifier": visit['identifier']}
+		print("QUESTION ID type: ", int(id))
 		if questions.count(myquery) == 0:
 			return jsonify(status="error", error="No existing question ID")
-		myquery = {"id" : id}
-		myquery2 = {"id" : id, "identifier": visit['identifier']}
-		question = questions.find_one(myquery)
+		my_question = questions.find_one(myquery)
 		if col.count(myquery2) == 0: #unique visit!
-			visit['id'] = id
+			visit['id'] = int(id)
 			col.insert_one(visit)
-			question['view_count'] = question['view_count'] + 1
-			questions.update_one(myquery, { "$set": { "view_count" : question['view_count']} } )
+			my_question['view_count'] = my_question['view_count'] + 1
+			questions.update_one(myquery, { "$set": { "view_count" : my_question['view_count']} } )
 
-		return jsonify(status="OK", question=question)
+		my_question = json.loads(dumps(my_question))
+		return jsonify(status="OK", question=my_question)
 
 
 
@@ -162,7 +173,10 @@ class AddAnswer(Resource):
 			json = request.get_json()
 		else:
 			return jsonify(status="error", error="Request isn't json")
+		if not "body" in json:
+			return jsonify(status="error", error="missing argument: 'body'")
 		body = json['body']
+		
 		media = []
 		if 'media' in json:
 			media = json['media']
@@ -183,13 +197,13 @@ class AddAnswer(Resource):
 		
 		#add this answer to the question's answer list
 		questions = db["questions"]
-		myquery = {'id' : id}
+		myquery = {'id' : int(id)}
 		question = questions.find_one(myquery)
 		question['answers'].append(answer_id)
-		questions.update_one(myquery, {"$set": {"answers" : question['answers']
+		questions.update_one(myquery, {"$set": {"answers" : question['answers']}})
+		questions.update_one(myquery, {"$set": {"answer_count" : question['answer_count'] + 1}})
 		
-		
-		return jsonify(status="OK",id=str(dToInsert['id']))  
+		return jsonify(status="OK", id=answer_id)  
 class GetAnswers(Resource):
 	#get all answers for the question with the given id
 	#params:
@@ -207,12 +221,11 @@ class GetAnswers(Resource):
 	#	error: message stirng (if error)
 	@jwt_optional
 	def get(self, id):
-		return jsonify(status="error", error="incomplete")
 		#get every answer from the question's "answers" array
 		client = getMongoClient()
 		db = client["Project"]
 		questions = db["questions"]
-		myquery = {"id" : id}
+		myquery = {"id" : int(id)}
 		
 		question = questions.find_one(myquery)
 		
@@ -226,7 +239,7 @@ class GetAnswers(Resource):
 		for answerID in question["answers"]:
 			myquery2 = {"id" : answerID}
 			answer = answer_col.find_one(myquery2)
-			results.append(answer) 
+			results.append(json.loads(dumps(answer)))
 		
 		return jsonify(answers=results, status="OK")
 
@@ -243,7 +256,7 @@ class SearchQuestion(Resource):
 	@jwt_optional
 	def post(self):
 		if request.is_json:
-			json = request.get_json()
+			my_json = request.get_json()
 		else:
 			return jsonify(status="error", error="Request isn't json")
 		#defaults
@@ -256,16 +269,16 @@ class SearchQuestion(Resource):
 		#tags = []
 		#has_media = "False"
 		
-		if 'timestamp' in json:
-			timestamp = json['timestamp']
-		if 'limit' in json:
-                        limit = json['limit']
+		if 'timestamp' in my_json:
+			timestamp = my_json['timestamp']
+		if 'limit' in my_json:
+			limit = my_json['limit']
 			if limit > 100:
 				limit = 100
 			if limit < 1:
 				limit = 1
-		if 'accepted' in json:
-                        timestamp = json['accepted']
+		if 'accepted' in my_json:
+                        timestamp = my_json['accepted']
 		
 		results = [] #array of questions
 		
@@ -284,12 +297,12 @@ class SearchQuestion(Resource):
 			my_query["accepted_answer_id"] = {"$ne": None}	
 		
 		my_cursor = col.find(my_query).sort("score")
- 		for i in range(limit):
-			question_element = my_cursor.hasNext() ? myCursor.next() : None
-			if not question_element:
-				break
+		for i in range(limit):
+			question_element = next(my_cursor, None)
+			if question_element:
+				results.append(json.loads(dumps(question_element)))
 			else:
-				results.append(question_element)
+				break
 		return jsonify(status = "OK", questions = results)
 
 	def get(self):
