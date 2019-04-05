@@ -156,12 +156,9 @@ class GetQuestion(Resource):
 		my_question = json.loads(dumps(my_question))
 		return jsonify(status="OK", question=my_question)
 
-
-
-class DeleteQuestion(Resource):
 	@custom_validator
 	def delete(self, id):
-		#TODO: delete all answers from answer collection(?), delete the question from the user's question array (not there yet)
+		#TODO: delete all answers from answer collection(?)
 
 		#find the question 
 		client = getMongoClient()
@@ -179,7 +176,15 @@ class DeleteQuestion(Resource):
 		if users.count(user_query) == 0:
 			return jsonify(status="error", error="No matching user"), 445
 		my_user = users.find_one(user_query)
-	
+		
+		#get all answers that are in this question's 'answers' array
+		my_answers = my_question['answers']
+		answers = db['answers']
+		for ans in my_answers:
+			answer_query = {"id" : ans}
+			answers.delete_one(answer_query)
+			#TODO: Major cleanup: have a function that does this instead (need to consider the user of each question, and delete references there as well.
+
 		#delete the question
 		questions.delete_one(id_query)		
 		
@@ -188,7 +193,6 @@ class DeleteQuestion(Resource):
 		my_question_list.remove(int(id))
 		
 		users.update_one(user_query, { "$set": {"questions" : my_question_list}})
-
 		return jsonify(status="OK"), 200
 
  	
