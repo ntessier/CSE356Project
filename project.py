@@ -158,6 +158,40 @@ class GetQuestion(Resource):
 
 
 
+class DeleteQuestion(Resource):
+	@custom_validator
+	def delete(self, id):
+		#TODO: delete all answers from answer collection(?), delete the question from the user's question array (not there yet)
+
+		#find the question 
+		client = getMongoClient()
+		db = client["Project"]
+		questions = db['questions']
+		id_query = {"id" : int(id)}
+		if questions.count(id_query) == 0:
+			return jsonify(status="error", error="No existing question ID"), 444
+		my_question = questions.find_one(id_query)
+				
+		#find the original poster	
+		username = get_jwt_identity()
+		users = db['users']
+		user_query = {"username" : username}
+		if users.count(user_query) == 0:
+			return jsonify(status="error", error="No matching user"), 445
+		my_user = users.find_one(user_query)
+	
+		#delete the question
+		questions.delete_one(id_query)		
+		
+		#delete the question from the user's question list
+		my_question_list = my_user['questions']
+		my_question_list.remove(int(id))
+		
+		users.update_one(user_query, { "$set": {"questions" : my_question_list}})
+
+		return jsonify(status="OK"), 200
+
+ 	
 class AddAnswer(Resource):
 	#add an answer to the question with the given id
 	#params:

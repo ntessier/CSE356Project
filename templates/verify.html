@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+        <title>Verify User</title>
+</head>
+<body>
+<script>
+	function callREST(form){
+		var my_form = new FormData(document.getElementById('my_form'))
+		console.log(my_form.get("email"));
+		console.log(my_form.get("key"));
+
+		var xhr = new XMLHttpRequest();
+		xhr.responseType = 'json';
+		xhr.open("POST", '/verify', true);
+		
+		xhr.setRequestHeader("Content-Type", "application/json");
+		
+		xhr.onreadystatechange = function() {
+			if( xhr.readyState == 4){
+				if(xhr.response['status'] === "error"){
+					alert(xhr.response['error'])
+				}
+				else{
+					alert("Success, please login")
+					window.location.href = '/login'
+				}
+			}
+
+		}
+		
+		xhr.send(JSON.stringify({"email": my_form.get("email"), "key": my_form.get("key")}));
+		
+	}
+</script>
+<form id = "my_form" action="javascript:;" onsubmit="callREST(this)">
+        Email: <input type = "text" name = "email" value ="">
+        Verification Key: <input type = "text" name = "key" value ="b">
+<input type = "submit" value = "Login">
+</form>
+</body>
+</html>

@@ -47,6 +47,8 @@ class AddUser(Resource):
 			dataToInsert['validated'] = False
 			dataToInsert['verificationCode'] = getKey()
 			dataToInsert['reputation'] = 0
+			dataToInsert['questions'] = []	#list of question IDs
+			dataToInsert['answers'] = [] 	#list of answer IDs
 			mycol.insert_one(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			msg = "\nHello " + username + "!\n Please click this link to\
@@ -61,6 +63,9 @@ class AddUser(Resource):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('adduser.html'), headers)
 class VerifyUser(Resource):
+	def get(self):
+		headers = {'Content-Type' : 'text/html'}
+		return make_response(render_template('verify.html'), headers)
 	def post(self):
 		if request.is_json:
 			json = request.get_json()
@@ -73,7 +78,8 @@ class VerifyUser(Resource):
 		myquery = {"email" : email}
 		row = mycol.find_one(myquery)
 		if row is None:
-			print("user not found")
+			print("email not found")
+			return jsonify(status="error", error="Email not found!")
 		else:
 			if row['validated'] is False and row['verificationCode'] == key:
 				print("\n VALIDATED WITH CODE")
