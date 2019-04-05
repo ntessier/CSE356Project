@@ -4,6 +4,13 @@
 	<title>Login Page</title>
 </head>
 <body>
+<script>
+	function callREST() {
+		var my_form = new FormData(document.getElementById('loginform'))
+		user = my_form.get("username");
+		pass = my_form.get("password");
+		var xhr = newXMLHttpRequest();
+		xhr.responseType = '
 <form action="/login" method="post">
 	Username: <input type = "text" name = "username" value ="">
 	Password: <input type = "text" name = "password" value ="">
