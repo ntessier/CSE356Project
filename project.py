@@ -92,6 +92,52 @@ class LoginUser(Resource):
 	def get(self):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('login.html'), headers)
+class GetUser(Resource):
+	def get(self, username):
+		#get the user from the database
+		my_username = username
+		
+		client = getMongoClient()
+		db = client["Project"]
+		users = db['users']
+		username_query = {"username": my_username}
+		my_user = users.find_one(username_query)
+		if not my_user:	#no matching user
+			error_msg = "No user by the name "+my_username
+			return jsonify(status = "error", error = error_msg)
+
+		return jsonify(status = "OK", user = json.loads(dumps(my_user))	
+
+class GetUserQuestions(Resource):
+	def get(self, username):
+		my_username = username
+
+                client = getMongoClient()
+                db = client["Project"]
+                users = db['users']
+                username_query = {"username": my_username}
+                my_user = users.find_one(username_query)
+                if not my_user: #no matching user
+                        error_msg = "No user by the name "+my_username
+                        return jsonify(status = "error", error = error_msg)
+		return jsonify(status = "OK", questions = my_user['questions'])
+
+class GetUserAnswers(Resource):
+	def get(self, username):
+		my_username = username
+
+                client = getMongoClient()
+                db = client["Project"]
+                users = db['users']
+                username_query = {"username": my_username}
+                my_user = users.find_one(username_query)
+                if not my_user: #no matching user
+                        error_msg = "No user by the name "+my_username
+                        return jsonify(status = "error", error = error_msg)
+		return jsonify(status = "OK", answers = my_user['answers'])
+
+
+
 class AddQuestion(Resource):
 	@custom_validator
 	def post(self):
@@ -339,7 +385,7 @@ class SearchQuestion(Resource):
 		timestamp = time.time()
 		limit = 25
 		accepted = "False"	#keep parameters as a string
-
+		q = None
 		#q = ""		
 		#sort_by = "score"
 		#tags = []
@@ -354,8 +400,11 @@ class SearchQuestion(Resource):
 			if limit < 1:
 				limit = 1
 		if 'accepted' in my_json:
-                        timestamp = my_json['accepted']
-		
+                        accepted = my_json['accepted']
+		if 'q' in my_json:
+			q = my_json['q']
+			
+	
 		results = [] #array of questions
 		
 		client = getMongoClient()
@@ -371,6 +420,10 @@ class SearchQuestion(Resource):
 		#if "accepted" param is on, only give questions where acc_id is not None
 		if accepted != "False":
 			my_query["accepted_answer_id"] = {"$ne": None}	
+		#if query string specified, only return questions with matching title or body
+		if q:
+			col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name='search_index',default_language='english')
+			my_query["$text"] = {"$search": q}
 		
 		my_cursor = col.find(my_query).sort("score")
 		for i in range(limit):
@@ -427,6 +480,9 @@ api.add_resource(VerifyUser, '/verify')
 api.add_resource(LoginUser, '/login')
 api.add_resource(LogoutUser, '/logout')
 api.add_resource(LogoutUser2, '/logout2')
+api.add_resource(GetUser,'/user/<username>')
+api.add_resource(GetUserQuestions,'/user/<username>/questions')
+api.add_resource(GetUserAnswers,'/user/<username>/answers')
 api.add_resource(TokenRefresh, '/refresh')
 api.add_resource(AddQuestion, '/questions/add')
 api.add_resource(GetQuestion, '/questions/<id>')
