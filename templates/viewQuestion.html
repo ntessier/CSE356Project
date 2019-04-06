@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ViewQuestion</title>
+</head>
+<script>
+function getID()
+{
+	url = window.location.href.split('/')
+	return url[url.length-1];
+}
+function deleteQuestion()
+{
+	var xhr = new XMLHttpRequest();
+	xhr.open("DELETE", '/questions/' + getID(), true)
+	xhr.responseType = 'json';
+	xhr.send();
+
+	xhr.onreadystatechange = function() {
+		if(xhr.readyState == 4){
+			if(xhr.response['status'] === "error"){
+				alert(xhr.response['error'])
+			}
+			else{
+				alert("Success! Deleted Question.")
+				window.location.href ='/homepage'
+			}
+}
+
+window.onload = function(){
+	var xhr = new XMLHttpRequest();
+	xhr.open("GET", '/questions/' + getID(), true)
+	xhr.responseType = 'json';
+	xhr.send();
+
+	xhr.onreadystatechange = function() {
+
+		if (xhr.readyState == 4){
+			if (xhr.response['status'] === "error"){
+				alert(xhr.response['error'])
+			}
+			else{
+				question = xhr.response['question']
+				var questionDiv = document.getElementById('question')
+
+				for (var key in question) {
+					if (question.hasOwnProperty(key)) {
+						var text = document.createTextNode(key + ": " + question[key] + "<br>")
+						questionDiv.appendChild(text)
+					}
+				}
+
+				//render the question
+			}
+		}
+	}
+
+}
+window.onload = function(){
+	var xhr = new XMLHttpRequest();
+	xhr.open("GET", '/questions/' + getID() + '/answers', true);
+	xhr.responseType = 'json';
+	xhr.send();
+
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4){
+			if (xhr.response['status'] === "error"){
+				alert(xhr.response['error'])
+			}
+			else{
+				var answerDiv = document.getElementById('answer')
+				answers = xhr.response['answers']
+				var i;
+				for (i = 0; i < answers.length; i++)
+				{
+					answer = answers[i];
+					for (var key in answer)
+					{
+						if (answer.hasOwnProperty(key)){
+							var text = document.createTextNode(key + ": " + answer[key] + "<br>");
+							answerDiv.appendChild(text);
+						}
+					}
+				}
+
+				//render the question
+			}
+		}
+	}
+}
+
+</script>
+<body>
+<div id = "question">Question<br></div>
+
+<button onclick = "deleteQuestion()">Delete</button>
+
+<div id = "answer">ANSWERS<br></div>
+
+
+
+</body>
+</html>
+
+need delete button if user is logged in and viewing one of their questions
+
