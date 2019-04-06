@@ -158,44 +158,82 @@ class GetQuestion(Resource):
 
 	@custom_validator
 	def delete(self, id):
-		#TODO: delete all answers from answer collection(?)
-
-		#find the question 
+		#find the question
 		client = getMongoClient()
 		db = client["Project"]
 		questions = db['questions']
 		id_query = {"id" : int(id)}
 		if questions.count(id_query) == 0:
-			return jsonify(status="error", error="No existing question ID"), 444
+			return jsonify(status="error", error="No existing question ID"), 400
 		my_question = questions.find_one(id_query)
-				
-		#find the original poster	
-		username = get_jwt_identity()
-		users = db['users']
-		user_query = {"username" : username}
-		if users.count(user_query) == 0:
-			return jsonify(status="error", error="No matching user"), 445
-		my_user = users.find_one(user_query)
-		
-		#get all answers that are in this question's 'answers' array
-		my_answers = my_question['answers']
-		answers = db['answers']
-		for ans in my_answers:
-			answer_query = {"id" : ans}
-			answers.delete_one(answer_query)
-			#TODO: Major cleanup: have a function that does this instead (need to consider the user of each question, and delete references there as well.
 
+		#Make sure this is the right user
+		this_username = get_jwt_identity()
+		question_username = my_question['user']
+
+		if not this_username == question_username:
+			return jsonify(status="error", error="Can't delete a question that isn't yours!"), 400
 		#delete the question
-		questions.delete_one(id_query)		
-		
-		#delete the question from the user's question list
-		my_question_list = my_user['questions']
-		my_question_list.remove(int(id))
-		
-		users.update_one(user_query, { "$set": {"questions" : my_question_list}})
-		return jsonify(status="OK"), 200
+		delete_response = deleteQuestion(my_question)
+		if delete_response['status'] == "error":
+			return delete_response, 400
 
- 	
+		questions.delete_one(id_query)
+
+		return delete_response, 200
+#delete a question
+#@param a question object
+#@return a json containing "status"="OK" or "error"
+def delete_question(my_question):
+	my_username = my_question['user']
+	my_ansers = my_question["answers"]
+
+	# delete the reference held by "my_user"
+	client = getMongoClient()
+	db = client["Project"]
+	users = db['users']
+	user_query = {"username": my_username}
+	my_user = users.find_one(user_query)
+	if not my_user:	#no valid user for this question
+		return jsonify(status = "error", error="question does not have a valid user")
+
+	questions_by_user = my_user['questions']
+	questions_by_user.remove(my_question['id'])
+	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
+
+	#delete all answers
+	for answer in my_question['answers']:
+		#TODO: obviously inefficient, waiting on every delete. Use message passing?
+		delete_answer(answer)
+	
+	return jsonify(status="OK")
+	#PART3: remove associate reputation	
+#delete an answer
+#@param an answer ID
+#@return nothing
+def delete_answer(answer_id):
+	client = getMongoClient()
+	db = client["Project"]
+	answers = db['answers']
+	answer_query = {'id' : answer_id}
+	my_answer = answers.find_one(answer_query)
+	
+	#if answer not found
+	if not my_answer:
+		print("No answer found when trying to delete. Answer ID: ", my_answer['id'])
+		return 
+
+	#Delete user's reference to this answer
+	my_username = my_answer['user']
+	users = db['users']
+        user_query = {"username": my_username}
+        my_user = users.find_one(user_query)
+	
+	answers_by_user = my_user['answers']
+        answers_by_user.remove(my_answer['id'])
+        users.update_one(user_query, {"$set": {"answers": answers_by_user}})
+
+	#PART3: remove associated reputation
 class AddAnswer(Resource):
 	#add an answer to the question with the given id
 	#params:
@@ -347,6 +385,11 @@ class SearchQuestion(Resource):
 		#TODO: render UI page
 		return "hello search"
 
+class Homepage(Resource):
+	def get(self):
+		headers = {'Content-Type':'text/html'}
+		return make_response(render_template('homepage.html'), headers)
+
 blacklist = set()
 @jwt.token_in_blacklist_loader
 def check_if_token_in_blacklist(decrypted_token):
@@ -378,7 +421,7 @@ class TokenRefresh(Resource):
 		resp = jsonify({"status":"OK"})
 		set_access_cookies(resp, access_token)
 		return resp
-
+api.add_resource(Homepage, '/homepage')
 api.add_resource(AddUser, '/adduser')
 api.add_resource(VerifyUser, '/verify')
 api.add_resource(LoginUser, '/login')
