@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Homepage</title>
+</head>
+<body>
+<script>
+window.onload = function()
+{
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", '/search', true)
+	xhr.setRequestHeader("Content-Type", "application/json");
+	xhr.responseType = 'json';
+
+	xhr.send(JSON.stringify({"limit" : 25}));
+	xhr.onreadystatechange = function() {
+		if(xhr.readyState == 4){
+			if(xhr.response['status'] === "error"){
+				alert(xhr.response['error'])
+			}
+			else{
+				questions = xhr.response['questions']
+				var i;
+				var text = ""
+				var mydiv = document.getElementById("questions")
+				for (i = 0; i < questions.length; i++)
+				{
+					var aTag = document.createElement('a');
+					question = questions[i];
+					title = question['title']
+					id = question['id']
+					aTag.setAttribute('href', "/questions/" + id)
+					aTag.innerHTML = title + "<br>";
+					mydiv.appendChild(aTag);
+				}
+			}
+		}
+
+	}
+}
+</script>
+
+<div id = questions> </div>
+</body>
+</html>

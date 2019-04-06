@@ -9,11 +9,31 @@
 		var my_form = new FormData(document.getElementById('loginform'))
 		user = my_form.get("username");
 		pass = my_form.get("password");
-		var xhr = newXMLHttpRequest();
-		xhr.responseType = '
-<form action="/login" method="post">
-	Username: <input type = "text" name = "username" value ="">
-	Password: <input type = "text" name = "password" value ="">
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", '/login', true)
+		xhr.setRequestHeader("Content-Type", "application/json");
+		xhr.responseType = "json";
+		xhr.send(JSON.stringify({"username" : user, "password" : pass}));
+		xhr.onreadystatechange = function() {
+			if(xhr.readyState == 4){
+				if(xhr.response['status'] === "error"){
+					alert(xhr.response['error'])
+				}
+				else{
+					alert("Success, redirecting to homepage")
+					window.location.href = '/homepage'
+				}
+			}
+
+		}
+		
+
+	}
+
+</script>
+<form id = "loginform" action="javascript:;" onsubmit="callREST()">
+        Username: <input type = "text" name = "username" value ="">
+        Password: <input type = "text" name = "password" value ="">
 <input type = "submit" value = "Login">
 </form>
 </body>
