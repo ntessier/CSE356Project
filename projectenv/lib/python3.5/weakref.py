@@ -1,1 +1,1 @@
-C:/usr/lib/python3.5/weakref.py
+/usr/lib/python3.5/weakref.py

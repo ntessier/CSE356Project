@@ -1,1 +1,1 @@
-C:/usr/lib/python3.5/types.py
+/usr/lib/python3.5/types.py
