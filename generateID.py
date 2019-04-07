@@ -12,7 +12,7 @@ def generateNewID(): #will generate random integer ID while avoiding collisions
 	while answerCol.count(queryForID) != 0 or questionCol.count(queryForID) != 0:
 		randomkey = ''.join([random.choice(string.digits) for n in range(16)])
 		queryForID = {"id" : int(randomkey)}
-	print(str(randomkey))
-	return randomkey
+#	print(str(randomkey))
+	return int(randomkey)
 if __name__ == '__main__':
 	generateNewID()

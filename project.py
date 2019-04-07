@@ -23,7 +23,7 @@ from mongoConnection import getMongoClient
 
 from flask_jwt_extended.tokens import decode_jwt
 from flask_jwt_extended.utils import has_user_loader, user_loader
-
+from generateID import generateNewID
 app = Flask(__name__)
 api = Api(app)
 
@@ -169,9 +169,18 @@ class AddQuestion(Resource):
 		dToInsert['timestamp'] = time.time() #time.time() should be a unix timestamp
 		dToInsert['media'] = None #might not be necessary right now bc its future milestone
 		dToInsert['accepted_answer_id'] = None
-		dToInsert['id'] = col.count() + 1 #avoid zero indexing on the IDs 
+		dToInsert['id'] = generateNewID() 
 		dToInsert['answers'] = []	#empty array of answer IDs
 		col.insert_one(dToInsert)
+
+		#add the question to this user's question list
+		user_col = db["users"]
+		user_query = {"username": get_jwt_identity()}
+		my_user = user_col.find_one(user_query)
+		my_questions_list = my_user['questions']
+		my_questions_list.append(dToInsert['id'])
+		user_col.update_one(user_query, {"$set": {'questions': my_questions_list}})
+
 		return jsonify(status="OK", id=dToInsert['id'])
 
 class GetQuestion(Resource):
@@ -227,7 +236,7 @@ class GetQuestion(Resource):
 
 		questions.delete_one(id_query)
 
-		return make_resposne(jsonify(delete_response), 200)
+		return make_response(jsonify(delete_response), 200)
 
 #delete a question
 #@param a question object
@@ -237,6 +246,7 @@ def delete_question(my_question):
 	my_ansers = my_question["answers"]
 
 	print("DELETING FOR USER: ", my_username)
+	
 	# delete the reference held by "my_user"
 	client = getMongoClient()
 	db = client["Project"]
@@ -248,8 +258,12 @@ def delete_question(my_question):
 		return_data = {}
 		return_data['status'] = "error"
 		return return_data
-
+	print(my_user)
+	print(my_user['reputation'])
 	questions_by_user = my_user['questions']
+
+	print("Question ID to Remove: ", my_question['id'])
+	print("Questions Owned by This User: ", questions_by_user)
 	questions_by_user.remove(my_question['id'])
 	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
 
@@ -315,7 +329,7 @@ class AddAnswer(Resource):
 		db = client["Project"]
 		col = db["answers"]	
 		dToInsert = {}
-		answer_id = col.count()+1
+		answer_id = generateNewID()
 		dToInsert['id'] = answer_id
 		dToInsert['user'] = get_jwt_identity()	
 		dToInsert['body'] = body
@@ -332,6 +346,12 @@ class AddAnswer(Resource):
 		question['answers'].append(answer_id)
 		questions.update_one(myquery, {"$set": {"answers" : question['answers']}})
 		questions.update_one(myquery, {"$set": {"answer_count" : question['answer_count'] + 1}})
+		user_col = db["users"]
+		user_query = {"username": get_jwt_identity()}
+		my_user = users.find_one(user_query)
+		my_answer_list = my_user['answers']
+		my_answer_list.append(dToInsert['id'])
+		user_col.update_one(user_query, {"$set": {'answers': my_answer_list}})
 		
 		return jsonify(status="OK", id=answer_id)  
 class GetAnswers(Resource):
