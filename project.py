@@ -106,34 +106,34 @@ class GetUser(Resource):
 			error_msg = "No user by the name "+my_username
 			return jsonify(status = "error", error = error_msg)
 
-		return jsonify(status = "OK", user = json.loads(dumps(my_user))	
+		return jsonify(status = "OK", user = json.loads(dumps(my_user)))	
 
 class GetUserQuestions(Resource):
 	def get(self, username):
 		my_username = username
 
-                client = getMongoClient()
-                db = client["Project"]
-                users = db['users']
-                username_query = {"username": my_username}
-                my_user = users.find_one(username_query)
-                if not my_user: #no matching user
-                        error_msg = "No user by the name "+my_username
-                        return jsonify(status = "error", error = error_msg)
+		client = getMongoClient()
+		db = client["Project"]
+		users = db['users']
+		username_query = {"username": my_username}
+		my_user = users.find_one(username_query)
+		if not my_user: #no matching user
+			error_msg = "No user by the name "+my_username
+			return jsonify(status = "error", error = error_msg)
 		return jsonify(status = "OK", questions = my_user['questions'])
 
 class GetUserAnswers(Resource):
 	def get(self, username):
 		my_username = username
 
-                client = getMongoClient()
-                db = client["Project"]
-                users = db['users']
-                username_query = {"username": my_username}
-                my_user = users.find_one(username_query)
-                if not my_user: #no matching user
-                        error_msg = "No user by the name "+my_username
-                        return jsonify(status = "error", error = error_msg)
+		client = getMongoClient()
+		db = client["Project"]
+		users = db['users']
+		username_query = {"username": my_username}
+		my_user = users.find_one(username_query)
+		if not my_user: #no matching user
+			error_msg = "No user by the name "+my_username
+			return jsonify(status = "error", error = error_msg)
 		return jsonify(status = "OK", answers = my_user['answers'])
 
 
@@ -210,30 +210,33 @@ class GetQuestion(Resource):
 		questions = db['questions']
 		id_query = {"id" : int(id)}
 		if questions.count(id_query) == 0:
-			return jsonify(status="error", error="No existing question ID"), 400
+			return make_response(jsonify(status="error", error="No existing question ID"), 400)
 		my_question = questions.find_one(id_query)
 
 		#Make sure this is the right user
 		this_username = get_jwt_identity()
-		question_username = my_question['user']
+		question_username = my_question['user']['username']
 
 		if not this_username == question_username:
-			return jsonify(status="error", error="Can't delete a question that isn't yours!"), 400
+			return make_response(jsonify(status="error", error="Can't delete a question that isn't yours!"), 200)
 		#delete the question
-		delete_response = deleteQuestion(my_question)
+		delete_response = delete_question(my_question)
+		print(delete_response)
 		if delete_response['status'] == "error":
-			return delete_response, 400
+			return make_response(jsonify(status="error", error="cannot delete question"),200)
 
 		questions.delete_one(id_query)
 
-		return delete_response, 200
+		return make_resposne(jsonify(delete_response), 200)
+
 #delete a question
 #@param a question object
 #@return a json containing "status"="OK" or "error"
 def delete_question(my_question):
-	my_username = my_question['user']
+	my_username = my_question['user']['username']
 	my_ansers = my_question["answers"]
 
+	print("DELETING FOR USER: ", my_username)
 	# delete the reference held by "my_user"
 	client = getMongoClient()
 	db = client["Project"]
@@ -241,7 +244,10 @@ def delete_question(my_question):
 	user_query = {"username": my_username}
 	my_user = users.find_one(user_query)
 	if not my_user:	#no valid user for this question
-		return jsonify(status = "error", error="question does not have a valid user")
+		print("NO VALID USER HERE")
+		return_data = {}
+		return_data['status'] = "error"
+		return return_data
 
 	questions_by_user = my_user['questions']
 	questions_by_user.remove(my_question['id'])
@@ -251,8 +257,10 @@ def delete_question(my_question):
 	for answer in my_question['answers']:
 		#TODO: obviously inefficient, waiting on every delete. Use message passing?
 		delete_answer(answer)
-	
-	return jsonify(status="OK")
+	return_data = {}
+	return_data['status']="OK"
+	print("RETURN DATA: ", return_data)
+	return return_data
 	#PART3: remove associate reputation	
 #delete an answer
 #@param an answer ID
@@ -272,12 +280,12 @@ def delete_answer(answer_id):
 	#Delete user's reference to this answer
 	my_username = my_answer['user']
 	users = db['users']
-        user_query = {"username": my_username}
-        my_user = users.find_one(user_query)
-	
+	user_query = {"username": my_username}
+	my_user = users.find_one(user_query)
+
 	answers_by_user = my_user['answers']
-        answers_by_user.remove(my_answer['id'])
-        users.update_one(user_query, {"$set": {"answers": answers_by_user}})
+	answers_by_user.remove(my_answer['id'])
+	users.update_one(user_query, {"$set": {"answers": answers_by_user}})
 
 	#PART3: remove associated reputation
 class AddAnswer(Resource):
@@ -443,6 +451,10 @@ class Homepage(Resource):
 		headers = {'Content-Type':'text/html'}
 		return make_response(render_template('homepage.html'), headers)
 
+class ViewQuestion(Resource):
+	def get(self,id):
+		headers = {'Content-Type' : 'text/html'}
+		return make_response(render_template('viewQuestion.html'), headers)
 blacklist = set()
 @jwt.token_in_blacklist_loader
 def check_if_token_in_blacklist(decrypted_token):
@@ -489,6 +501,6 @@ api.add_resource(GetQuestion, '/questions/<id>')
 api.add_resource(AddAnswer, '/questions/<id>/answers/add')
 api.add_resource(GetAnswers, '/questions/<id>/answers')
 api.add_resource(SearchQuestion, '/search')
-
+api.add_resource(ViewQuestion, '/view/questions/<id>')
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', debug=True)

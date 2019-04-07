@@ -29,7 +29,7 @@ window.onload = function()
 					question = questions[i];
 					title = question['title']
 					id = question['id']
-					aTag.setAttribute('href', "/questions/" + id)
+					aTag.setAttribute('href', "/view/questions/" + id)
 					aTag.innerHTML = title + "<br>";
 					mydiv.appendChild(aTag);
 				}

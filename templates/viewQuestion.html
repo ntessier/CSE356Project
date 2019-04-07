@@ -3,11 +3,23 @@
 <head>
 	<title>ViewQuestion</title>
 </head>
+
 <script>
+//console.log("SCRIPT GOT LOADED")
+//getQuestion()
+//getAnswersForQuestion()
 function getID()
 {
 	url = window.location.href.split('/')
 	return url[url.length-1];
+}
+function convertUNIXTimestamp(timestamp)
+{
+	var date = new Date(timestamp * 1000);
+	var year = date.getFullYear();
+	var month = date.getMonth();
+	var date = date.getDate();
+	return month + '/' + date + "/" + year;
 }
 function deleteQuestion()
 {
@@ -25,11 +37,15 @@ function deleteQuestion()
 				alert("Success! Deleted Question.")
 				window.location.href ='/homepage'
 			}
+		}
+	}
 }
 
-window.onload = function(){
+function getQuestion(){
+	//console.log("Made it int ogetQuestion")
 	var xhr = new XMLHttpRequest();
 	xhr.open("GET", '/questions/' + getID(), true)
+	//console.log("ID = " + getID());
 	xhr.responseType = 'json';
 	xhr.send();
 
@@ -42,11 +58,31 @@ window.onload = function(){
 			else{
 				question = xhr.response['question']
 				var questionDiv = document.getElementById('question')
-
+				//console.log("question = " + question);
 				for (var key in question) {
 					if (question.hasOwnProperty(key)) {
-						var text = document.createTextNode(key + ": " + question[key] + "<br>")
+						value = question[key]
+						if (key == '_id' || key == 'id')
+							continue;
+						if (key == 'user')
+						{
+							user = question[key]
+							var text = document.createTextNode("user: " + user['username'] + ", reputation: " + user['reputation']);
+							questionDiv.appendChild(text)
+							questionDiv.appendChild(document.createElement("br"))
+							continue;
+						}
+						if (key == 'timestamp')
+						{	
+							
+							time = convertUNIXTimestamp(question[key])
+							value = time;
+						}
+						var text = document.createTextNode(key + ": " + value)
+						//console.log("Text = " + text);
+						//questionDiv.innerHTML += key + ": " + question[key] + "<br"
 						questionDiv.appendChild(text)
+						questionDiv.appendChild(document.createElement("br"))
 					}
 				}
 
@@ -56,7 +92,7 @@ window.onload = function(){
 	}
 
 }
-window.onload = function(){
+function getAnswersForQuestion(){
 	var xhr = new XMLHttpRequest();
 	xhr.open("GET", '/questions/' + getID() + '/answers', true);
 	xhr.responseType = 'json';
@@ -73,12 +109,20 @@ window.onload = function(){
 				var i;
 				for (i = 0; i < answers.length; i++)
 				{
+					answerDiv.appendChild(document.createTextNode("Answer #" + (i+ 1)))
+					answerDiv.appendChild(document.createElement("br"))
 					answer = answers[i];
 					for (var key in answer)
 					{
+						value = answer[key]
+						if (key == "timestamp")
+							value = convertUNIXTimestamp(answer[key]);
+						if (key == "_id" || key == "id")
+							continue;
 						if (answer.hasOwnProperty(key)){
-							var text = document.createTextNode(key + ": " + answer[key] + "<br>");
+							var text = document.createTextNode(key + ": " + value);
 							answerDiv.appendChild(text);
+							answerDiv.appendChild(document.createElement("br"))
 						}
 					}
 				}
@@ -88,19 +132,53 @@ window.onload = function(){
 		}
 	}
 }
+function start()
+{
+	getQuestion();
+	getAnswersForQuestion();
+}
+//getQuestion();
+//getAnswersForQuestion();
+window.onload = start;
+function addAnswer(){
+	var form = new FormData(document.getElementById('answerForm'))
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", '/questions/' + getID() + '/answers/add', true);
+	xhr.responseType = 'json';
+	xhr.setRequestHeader("Content-Type", "application/json");
+	xhr.send(JSON.stringify({"body" : form.get("body")}));
+	
 
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4)
+		{
+			if (xhr.response['status'] === "error")
+			{
+				alert(xhr.response['error'])
+			}
+			else{
+				alert("Success, refreshing");
+				window.location.reload();
+			}
+		}
+
+	}
+}
 </script>
 <body>
 <div id = "question">Question<br></div>
 
 <button onclick = "deleteQuestion()">Delete</button>
-
 <div id = "answer">ANSWERS<br></div>
 
-
+<form action = "javascript:;" id = "answerForm" onsubmit ="addAnswer()">
+	Message:<br>
+	 <textarea rows = "5" cols = "50" name = "body" value = "">
+		Answer goes here.
+	</textarea>
+<input type = "submit" value = "Submit">
 
 </body>
 </html>
 
-need delete button if user is logged in and viewing one of their questions
 
