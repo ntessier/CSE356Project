@@ -450,7 +450,12 @@ class SearchQuestion(Resource):
 			my_query["accepted_answer_id"] = {"$ne": None}	
 		#if query string specified, only return questions with matching title or body
 		if q:
-			col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name='search_index',default_language='english')
+			index_name = "search_index"
+			index_info = col.index_information()
+			if index_name not in col.index_information():
+				print("GOING TO MAKE THE INDEX")
+				print("INDEX_INFO: ",index_info)
+				col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name=index_name,default_language='english')
 			my_query["$text"] = {"$search": q}
 		
 		my_cursor = col.find(my_query).sort("score")
