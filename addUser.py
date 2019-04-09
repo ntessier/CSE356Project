@@ -46,7 +46,7 @@ class AddUser(Resource):
 			dataToInsert['email'] = email 
 			dataToInsert['validated'] = False
 			dataToInsert['verificationCode'] = getKey()
-			dataToInsert['reputation'] = 0
+			dataToInsert['reputation'] = 1
 			dataToInsert['questions'] = []	#list of question IDs
 			dataToInsert['answers'] = [] 	#list of answer IDs
 			mycol.insert_one(dataToInsert)

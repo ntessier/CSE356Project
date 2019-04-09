@@ -46,7 +46,7 @@ def custom_validator(fn):
 		try:
 			verify_jwt_in_request()
 		except NoAuthorizationError:
-			return jsonify(status="error", error="Trying to access page that requires login")
+			return make_response(jsonify(status="error", error="Trying to access page that requires login"), 400)
 		return fn(*args, **kwargs)   
 	return wrapper
 
@@ -143,15 +143,19 @@ class AddQuestion(Resource):
 	def post(self):
 		if request.is_json:
 			json = request.get_json()
+			#print("JSON upon entering AddQuestion: " + dumps(json))
 		else:
 			return jsonify(status="error", error="Request isn't json")
 		if not "title" in json:
+			print("Missing a title")
 			return jsonify(status="error", error="Missing parameter: title")
-		if not "body" in json:
-                        return jsonify(status="error", error="Missing parameter: title")
+		if not "body" in json:	
+			print("Missing a body")
+			return jsonify(status="error", error="Missing parameter: title")
 		if not "tags" in json:
-			json['tags'] = []
-			#return jsonify(status="error", error="Missing parameter: tags")
+			print("Missing tags")
+			#json['tags'] = []
+			return jsonify(status="error", error="Missing parameter: tags")
 		title = json['title']
 		body = json['body']
 		tags = json['tags']
@@ -162,15 +166,16 @@ class AddQuestion(Resource):
 		dToInsert['title'] = title
 		dToInsert['body'] = body
 		dToInsert['tags'] = tags
-		dToInsert['user'] = {'username': get_jwt_identity(), 'reputation': 0} #TODO: search for user to find actual reputation
-		dToInsert['score'] = 0
+		dToInsert['user'] = {'username': get_jwt_identity(), 'reputation': 1} #TODO: search for user to find actual reputation
+		dToInsert['score'] = 1
 		dToInsert['view_count'] = 0
 		dToInsert['answer_count'] = 0
 		dToInsert['timestamp'] = time.time() #time.time() should be a unix timestamp
-		dToInsert['media'] = None #might not be necessary right now bc its future milestone
+		dToInsert['media'] = [] #might not be necessary right now bc its future milestone
 		dToInsert['accepted_answer_id'] = None
 		dToInsert['id'] = generateNewID() 
 		dToInsert['answers'] = []	#empty array of answer IDs
+		#print(dumps(dToInsert))
 		col.insert_one(dToInsert)
 
 		#add the question to this user's question list
@@ -178,14 +183,18 @@ class AddQuestion(Resource):
 		user_query = {"username": get_jwt_identity()}
 		my_user = user_col.find_one(user_query)
 		my_questions_list = my_user['questions']
-		my_questions_list.append(dToInsert['id'])
+		my_questions_list.append(str(dToInsert['id']))
 		user_col.update_one(user_query, {"$set": {'questions': my_questions_list}})
-
-		return jsonify(status="OK", id=dToInsert['id'])
+		
+		#print("right before the return, ID: ", dToInsert['id'])	
+		#print("right before the return,ID (int): ", int(dToInsert['id']))
+	
+		return jsonify(status="OK", id=str(dToInsert['id']))
 
 class GetQuestion(Resource):
 	@jwt_optional
 	def get(self, id):
+		print("STARTING GET QUESTION")
 		visit = {}
 		username = get_jwt_identity()
 		if username is None: #then we should check their IP 
@@ -209,6 +218,8 @@ class GetQuestion(Resource):
 			questions.update_one(myquery, { "$set": { "view_count" : my_question['view_count']} } )
 
 		my_question = json.loads(dumps(my_question))
+		print("Question Contents: ", my_question)
+		my_question['id'] = str(my_question['id'])
 		return jsonify(status="OK", question=my_question)
 
 	@custom_validator
@@ -227,12 +238,12 @@ class GetQuestion(Resource):
 		question_username = my_question['user']['username']
 
 		if not this_username == question_username:
-			return make_response(jsonify(status="error", error="Can't delete a question that isn't yours!"), 200)
+			return make_response(jsonify(status="error", error="Can't delete a question that isn't yours!"), 400)
 		#delete the question
 		delete_response = delete_question(my_question)
 		print(delete_response)
 		if delete_response['status'] == "error":
-			return make_response(jsonify(status="error", error="cannot delete question"),200)
+			return make_response(jsonify(status="error", error="cannot delete question"),400)
 
 		questions.delete_one(id_query)
 
@@ -264,7 +275,7 @@ def delete_question(my_question):
 
 	print("Question ID to Remove: ", my_question['id'])
 	print("Questions Owned by This User: ", questions_by_user)
-	questions_by_user.remove(my_question['id'])
+	questions_by_user.remove(str(my_question['id']))
 	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
 
 	#delete all answers
@@ -333,10 +344,11 @@ class AddAnswer(Resource):
 		dToInsert['id'] = answer_id
 		dToInsert['user'] = get_jwt_identity()	
 		dToInsert['body'] = body
-		dToInsert['score'] = 0
+		dToInsert['score'] = 1
 		dToInsert['is_accepted'] = False
 		dToInsert['timestamp'] = time.time()
 		dToInsert['media'] = media
+		print(dumps(dToInsert))
 		col.insert_one(dToInsert)
 		
 		#add this answer to the question's answer list
@@ -348,12 +360,12 @@ class AddAnswer(Resource):
 		questions.update_one(myquery, {"$set": {"answer_count" : question['answer_count'] + 1}})
 		user_col = db["users"]
 		user_query = {"username": get_jwt_identity()}
-		my_user = users.find_one(user_query)
+		my_user = user_col.find_one(user_query)
 		my_answer_list = my_user['answers']
-		my_answer_list.append(dToInsert['id'])
+		my_answer_list.append(str(dToInsert['id']))
 		user_col.update_one(user_query, {"$set": {'answers': my_answer_list}})
 		
-		return jsonify(status="OK", id=answer_id)  
+		return jsonify(status="OK", id=str(answer_id))  
 class GetAnswers(Resource):
 	#get all answers for the question with the given id
 	#params:
@@ -450,7 +462,7 @@ class SearchQuestion(Resource):
 			if index_name not in col.index_information():
 				print("GOING TO MAKE THE INDEX")
 				print("INDEX_INFO: ",index_info)
-				col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name=index_name,default_language='english')
+				col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name=index_name,default_language='none')
 			print("Search Query: ", q)
 			print("limit: ", limit)
 			print("timestamp: ", timestamp)
@@ -468,6 +480,7 @@ class SearchQuestion(Resource):
 			#my_cursor.sort([('_score', {'$meta': 'textScore'})])
 			#my_cursor = col.find(my_query).sort([("_txtscore",{"$meta":"textScore"})])
 			my_cursor = col.find(my_query, {'_txtscore':{'$meta':'textScore'}}).sort([("_txtscore",{"$meta":"textScore"})])
+			#my_cursor = col.find(my_query).sort('score')
 			##my_cursor = col.find(my_query).project({ "_txtscore": {"$meta" : "textScore"}}).sort({"_txtscore":{"$meta" : "textScore"}})
 		else:
 			my_cursor = col.find(my_query).sort("score")
