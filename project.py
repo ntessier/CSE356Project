@@ -442,12 +442,7 @@ class SearchQuestion(Resource):
 		#	my_cursor = col.find({"timestamp": {"$lt": timestamp}}).sort("score")
 		#else:
 		#	my_cursor = col.find({"timestamp": {"$lt": timestamp}, "accepted_answer_id": {"$ne": None}}).sort("score")
-		
-		my_query = {"timestamp": {"$lt": timestamp}}
-		
-		#if "accepted" param is on, only give questions where acc_id is not None
-		if accepted != "False":
-			my_query["accepted_answer_id"] = {"$ne": None}	
+		my_query = {}
 		#if query string specified, only return questions with matching title or body
 		if q:
 			index_name = "search_index"
@@ -456,9 +451,26 @@ class SearchQuestion(Resource):
 				print("GOING TO MAKE THE INDEX")
 				print("INDEX_INFO: ",index_info)
 				col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name=index_name,default_language='english')
+			print("Search Query: ", q)
+			print("limit: ", limit)
+			print("timestamp: ", timestamp)
 			my_query["$text"] = {"$search": q}
+			#my_query["_txtscore"] = {"$meta": 'textScore'}
+
 		
-		my_cursor = col.find(my_query).sort("score")
+		my_query["timestamp"] = {"$lt": timestamp}
+		
+		#if "accepted" param is on, only give questions where acc_id is not None
+		if accepted != "False":
+			my_query["accepted_answer_id"] = {"$ne": None}	
+		if q:
+			#my_cursor = col.find(my_query, {'_score', {'$meta': 'textScore'}})
+			#my_cursor.sort([('_score', {'$meta': 'textScore'})])
+			#my_cursor = col.find(my_query).sort([("_txtscore",{"$meta":"textScore"})])
+			my_cursor = col.find(my_query, {'_txtscore':{'$meta':'textScore'}}).sort([("_txtscore",{"$meta":"textScore"})])
+			##my_cursor = col.find(my_query).project({ "_txtscore": {"$meta" : "textScore"}}).sort({"_txtscore":{"$meta" : "textScore"}})
+		else:
+			my_cursor = col.find(my_query).sort("score")
 		for i in range(limit):
 			question_element = next(my_cursor, None)
 			if question_element:
