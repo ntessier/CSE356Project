@@ -23,7 +23,7 @@ from mongoConnection import getMongoClient
 
 from flask_jwt_extended.tokens import decode_jwt
 from flask_jwt_extended.utils import has_user_loader, user_loader
-
+from generateID import generateNewID
 app = Flask(__name__)
 api = Api(app)
 
@@ -46,7 +46,7 @@ def custom_validator(fn):
 		try:
 			verify_jwt_in_request()
 		except NoAuthorizationError:
-			return jsonify(status="error", error="Trying to access page that requires login")
+			return make_response(jsonify(status="error", error="Trying to access page that requires login"), 400)
 		return fn(*args, **kwargs)   
 	return wrapper
 
@@ -143,15 +143,19 @@ class AddQuestion(Resource):
 	def post(self):
 		if request.is_json:
 			json = request.get_json()
+			#print("JSON upon entering AddQuestion: " + dumps(json))
 		else:
 			return jsonify(status="error", error="Request isn't json")
 		if not "title" in json:
+			print("Missing a title")
 			return jsonify(status="error", error="Missing parameter: title")
-		if not "body" in json:
-                        return jsonify(status="error", error="Missing parameter: title")
+		if not "body" in json:	
+			print("Missing a body")
+			return jsonify(status="error", error="Missing parameter: title")
 		if not "tags" in json:
-			json['tags'] = []
-			#return jsonify(status="error", error="Missing parameter: tags")
+			print("Missing tags")
+			#json['tags'] = []
+			return jsonify(status="error", error="Missing parameter: tags")
 		title = json['title']
 		body = json['body']
 		tags = json['tags']
@@ -162,21 +166,35 @@ class AddQuestion(Resource):
 		dToInsert['title'] = title
 		dToInsert['body'] = body
 		dToInsert['tags'] = tags
-		dToInsert['user'] = {'username': get_jwt_identity(), 'reputation': 0} #TODO: search for user to find actual reputation
-		dToInsert['score'] = 0
+		dToInsert['user'] = {'username': get_jwt_identity(), 'reputation': 1} #TODO: search for user to find actual reputation
+		dToInsert['score'] = 1
 		dToInsert['view_count'] = 0
 		dToInsert['answer_count'] = 0
 		dToInsert['timestamp'] = time.time() #time.time() should be a unix timestamp
-		dToInsert['media'] = None #might not be necessary right now bc its future milestone
+		dToInsert['media'] = [] #might not be necessary right now bc its future milestone
 		dToInsert['accepted_answer_id'] = None
-		dToInsert['id'] = col.count() + 1 #avoid zero indexing on the IDs 
+		dToInsert['id'] = generateNewID() 
 		dToInsert['answers'] = []	#empty array of answer IDs
+		#print(dumps(dToInsert))
 		col.insert_one(dToInsert)
-		return jsonify(status="OK", id=dToInsert['id'])
+
+		#add the question to this user's question list
+		user_col = db["users"]
+		user_query = {"username": get_jwt_identity()}
+		my_user = user_col.find_one(user_query)
+		my_questions_list = my_user['questions']
+		my_questions_list.append(str(dToInsert['id']))
+		user_col.update_one(user_query, {"$set": {'questions': my_questions_list}})
+		
+		#print("right before the return, ID: ", dToInsert['id'])	
+		#print("right before the return,ID (int): ", int(dToInsert['id']))
+	
+		return jsonify(status="OK", id=str(dToInsert['id']))
 
 class GetQuestion(Resource):
 	@jwt_optional
 	def get(self, id):
+		print("STARTING GET QUESTION")
 		visit = {}
 		username = get_jwt_identity()
 		if username is None: #then we should check their IP 
@@ -200,6 +218,8 @@ class GetQuestion(Resource):
 			questions.update_one(myquery, { "$set": { "view_count" : my_question['view_count']} } )
 
 		my_question = json.loads(dumps(my_question))
+		print("Question Contents: ", my_question)
+		my_question['id'] = str(my_question['id'])
 		return jsonify(status="OK", question=my_question)
 
 	@custom_validator
@@ -218,16 +238,16 @@ class GetQuestion(Resource):
 		question_username = my_question['user']['username']
 
 		if not this_username == question_username:
-			return make_response(jsonify(status="error", error="Can't delete a question that isn't yours!"), 200)
+			return make_response(jsonify(status="error", error="Can't delete a question that isn't yours!"), 400)
 		#delete the question
 		delete_response = delete_question(my_question)
 		print(delete_response)
 		if delete_response['status'] == "error":
-			return make_response(jsonify(status="error", error="cannot delete question"),200)
+			return make_response(jsonify(status="error", error="cannot delete question"),400)
 
 		questions.delete_one(id_query)
 
-		return make_resposne(jsonify(delete_response), 200)
+		return make_response(jsonify(delete_response), 200)
 
 #delete a question
 #@param a question object
@@ -237,6 +257,7 @@ def delete_question(my_question):
 	my_ansers = my_question["answers"]
 
 	print("DELETING FOR USER: ", my_username)
+	
 	# delete the reference held by "my_user"
 	client = getMongoClient()
 	db = client["Project"]
@@ -248,9 +269,13 @@ def delete_question(my_question):
 		return_data = {}
 		return_data['status'] = "error"
 		return return_data
-
+	print(my_user)
+	print(my_user['reputation'])
 	questions_by_user = my_user['questions']
-	questions_by_user.remove(my_question['id'])
+
+	print("Question ID to Remove: ", my_question['id'])
+	print("Questions Owned by This User: ", questions_by_user)
+	questions_by_user.remove(str(my_question['id']))
 	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
 
 	#delete all answers
@@ -315,14 +340,15 @@ class AddAnswer(Resource):
 		db = client["Project"]
 		col = db["answers"]	
 		dToInsert = {}
-		answer_id = col.count()+1
+		answer_id = generateNewID()
 		dToInsert['id'] = answer_id
 		dToInsert['user'] = get_jwt_identity()	
 		dToInsert['body'] = body
-		dToInsert['score'] = 0
+		dToInsert['score'] = 1
 		dToInsert['is_accepted'] = False
 		dToInsert['timestamp'] = time.time()
 		dToInsert['media'] = media
+		print(dumps(dToInsert))
 		col.insert_one(dToInsert)
 		
 		#add this answer to the question's answer list
@@ -332,8 +358,14 @@ class AddAnswer(Resource):
 		question['answers'].append(answer_id)
 		questions.update_one(myquery, {"$set": {"answers" : question['answers']}})
 		questions.update_one(myquery, {"$set": {"answer_count" : question['answer_count'] + 1}})
+		user_col = db["users"]
+		user_query = {"username": get_jwt_identity()}
+		my_user = user_col.find_one(user_query)
+		my_answer_list = my_user['answers']
+		my_answer_list.append(str(dToInsert['id']))
+		user_col.update_one(user_query, {"$set": {'answers': my_answer_list}})
 		
-		return jsonify(status="OK", id=answer_id)  
+		return jsonify(status="OK", id=str(answer_id))  
 class GetAnswers(Resource):
 	#get all answers for the question with the given id
 	#params:
@@ -422,18 +454,36 @@ class SearchQuestion(Resource):
 		#	my_cursor = col.find({"timestamp": {"$lt": timestamp}}).sort("score")
 		#else:
 		#	my_cursor = col.find({"timestamp": {"$lt": timestamp}, "accepted_answer_id": {"$ne": None}}).sort("score")
+		my_query = {}
+		#if query string specified, only return questions with matching title or body
+		if q:
+			index_name = "search_index"
+			index_info = col.index_information()
+			if index_name not in col.index_information():
+				print("GOING TO MAKE THE INDEX")
+				print("INDEX_INFO: ",index_info)
+				col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name=index_name,default_language='none')
+			print("Search Query: ", q)
+			print("limit: ", limit)
+			print("timestamp: ", timestamp)
+			my_query["$text"] = {"$search": q}
+			#my_query["_txtscore"] = {"$meta": 'textScore'}
+
 		
-		my_query = {"timestamp": {"$lt": timestamp}}
+		my_query["timestamp"] = {"$lt": timestamp}
 		
 		#if "accepted" param is on, only give questions where acc_id is not None
 		if accepted != "False":
 			my_query["accepted_answer_id"] = {"$ne": None}	
-		#if query string specified, only return questions with matching title or body
 		if q:
-			col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name='search_index',default_language='english')
-			my_query["$text"] = {"$search": q}
-		
-		my_cursor = col.find(my_query).sort("score")
+			#my_cursor = col.find(my_query, {'_score', {'$meta': 'textScore'}})
+			#my_cursor.sort([('_score', {'$meta': 'textScore'})])
+			#my_cursor = col.find(my_query).sort([("_txtscore",{"$meta":"textScore"})])
+			my_cursor = col.find(my_query, {'_txtscore':{'$meta':'textScore'}}).sort([("_txtscore",{"$meta":"textScore"})])
+			#my_cursor = col.find(my_query).sort('score')
+			##my_cursor = col.find(my_query).project({ "_txtscore": {"$meta" : "textScore"}}).sort({"_txtscore":{"$meta" : "textScore"}})
+		else:
+			my_cursor = col.find(my_query).sort("score")
 		for i in range(limit):
 			question_element = next(my_cursor, None)
 			if question_element:

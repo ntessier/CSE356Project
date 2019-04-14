@@ -38,8 +38,52 @@ window.onload = function()
 
 	}
 }
+function addQuestion()
+{
+	var form = new FormData(document.getElementById('questionForm'))
+	var xhr = new XMLHttpRequest();
+	body = form.get("body");
+	title = form.get("title");
+	tags = form.get("tags");
+	tags = tags.split(',');
+	xhr.open("POST", '/questions/add', true);
+	xhr.responseType = 'json';
+	xhr.setRequestHeader("Content-Type", "application/json");
+	xhr.send(JSON.stringify({"body" : body, "title" : title, "tags" : tags}));
+	
+
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4)
+		{
+			if (xhr.response['status'] === "error")
+			{
+				alert(xhr.response['error'])
+			}
+			else{
+				
+				alert("Success, redirecting");
+				console.log(xhr.response["id"])
+				window.location.href = "/view/questions/" + xhr.response['id'] //redirect to view of question
+
+			}
+		}
+
+	}
+
+}
 </script>
 
 <div id = questions> </div>
+
+<br><br>
+Post a new Question!
+<form action = "javascript:;" id = "questionForm" onsubmit ="addQuestion()">
+	Title: <input type = "text" name = "title", value = "">
+	<br>Body:<br>
+	 <textarea rows = "5" cols = "50" name = "body" placeholder ="Question goes here"></textarea>
+	<br>Tags:<br>
+	<textarea rows = "1" cols = "50" name = "tags" placeholder ="write,tags,like,this,tag one,tag two,tag three"></textarea>
+<input type = "submit" value = "Submit">
+
 </body>
 </html>
