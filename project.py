@@ -20,7 +20,8 @@ import time
 from addUser import AddUser, VerifyUser
 #from login import LoginUser, LogoutUser, TokenRefresh
 from mongoConnection import getMongoClient
-
+from mongoAccess import *
+from mediaAccess import AddMedia
 from flask_jwt_extended.tokens import decode_jwt
 from flask_jwt_extended.utils import has_user_loader, user_loader
 from generateID import generateNewID
@@ -99,12 +100,13 @@ class GetUser(Resource):
 		#get the user from the database
 		my_username = username
 		
-		client = getMongoClient()
-		db = client["Project"]
-		users = db['users']
-		username_query = {"username": my_username}
-		my_user = users.find_one(username_query)
-		if not my_user:	#no matching user
+#		client = getMongoClient()
+#		db = client["Project"]
+#		users = db['users']
+#		username_query = {"username": my_username}
+#		my_user = users.find_one(username_query)
+		my_user = getUserByName(my_username)
+		if not my_user:
 			error_msg = "No user by the name "+my_username
 			return jsonify(status = "error", error = error_msg)
 
@@ -114,12 +116,13 @@ class GetUserQuestions(Resource):
 	def get(self, username):
 		my_username = username
 
-		client = getMongoClient()
-		db = client["Project"]
-		users = db['users']
-		username_query = {"username": my_username}
-		my_user = users.find_one(username_query)
-		if not my_user: #no matching user
+#		client = getMongoClient()
+#		db = client["Project"]
+#		users = db['users']
+#		username_query = {"username": my_username}
+#		my_user = users.find_one(username_query)
+		my_user = getUserByName(my_username)
+		if not my_user:
 			error_msg = "No user by the name "+my_username
 			return jsonify(status = "error", error = error_msg)
 		return jsonify(status = "OK", questions = my_user['questions'])
@@ -128,12 +131,13 @@ class GetUserAnswers(Resource):
 	def get(self, username):
 		my_username = username
 
-		client = getMongoClient()
-		db = client["Project"]
-		users = db['users']
-		username_query = {"username": my_username}
-		my_user = users.find_one(username_query)
-		if not my_user: #no matching user
+#		client = getMongoClient()
+#		db = client["Project"]
+#		users = db['users']
+#		username_query = {"username": my_username}
+#		my_user = users.find_one(username_query)
+		my_user = getUserByName(my_username)
+		if not my_user: 
 			error_msg = "No user by the name "+my_username
 			return jsonify(status = "error", error = error_msg)
 		return jsonify(status = "OK", answers = my_user['answers'])
@@ -161,14 +165,14 @@ class AddQuestion(Resource):
 		title = json['title']
 		body = json['body']
 		tags = json['tags']
-		client = getMongoClient()
-		db = client["Project"]
-		col = db["questions"]
+#		client = getMongoClient()
+#		db = client["Project"]
+#		col = db["questions"]
 		dToInsert = {}
 		dToInsert['title'] = title
 		dToInsert['body'] = body
 		dToInsert['tags'] = tags
-		dToInsert['user'] = {'username': get_jwt_identity(), 'reputation': 1} #TODO: search for user to find actual reputation
+		dToInsert['user'] = {'username': get_jwt_identity(), 'reputation': 1}
 		dToInsert['score'] = 1
 		dToInsert['view_count'] = 0
 		dToInsert['answer_count'] = 0
@@ -179,16 +183,19 @@ class AddQuestion(Resource):
 		dToInsert['answers'] = []	#empty array of answer IDs
 		#print(dumps(dToInsert))
 		#REFACTOR add entry in 'question'
-		col.insert_one(dToInsert)
+		#col.insert_one(dToInsert)
+		upsertQuestion(dToInsert)
 
 		#add the question to this user's question list
-		user_col = db["users"]
-		user_query = {"username": get_jwt_identity()}
-		my_user = user_col.find_one(user_query)
+		#user_col = db["users"]
+		#user_query = {"username": get_jwt_identity()}
+		#my_user = user_col.find_one(user_query)
+		my_user = getUserByName(get_jwt_identity())
 		my_questions_list = my_user['questions']
 		my_questions_list.append(dToInsert['id'])
 		#REFACTOR update 'questions' in 'user'
-		user_col.update_one(user_query, {"$set": {'questions': my_questions_list}})
+		#user_col.update_one(user_query, {"$set": {'questions': my_questions_list}})
+		upsertUser(my_user)
 		
 		#print("right before the return, ID: ", dToInsert['id'])	
 		#print("right before the return,ID (int): ", int(dToInsert['id']))
@@ -207,21 +214,23 @@ class GetQuestion(Resource):
 			visit['identifier'] = username 
 		client = getMongoClient()
 		db = client["Project"]
+		questions = db["questions"]
 		col = db["visits"]
-		questions = db['questions']
-		myquery = {"id" : id}
 		myquery2 = {"id" : id, "identifier": visit['identifier']}
 		print("QUESTION ID type: ", id)
-		if questions.count(myquery) == 0:
+		
+		my_question = getQuestionByID(id)
+		if not my_question:
 			return jsonify(status="error", error="No existing question ID")
-		my_question = questions.find_one(myquery)
+		
 		if col.count(myquery2) == 0: #unique visit!
 			visit['id'] = id
 			#REFACTOR new entry in 'visit'
 			col.insert_one(visit)
 			my_question['view_count'] = my_question['view_count'] + 1
 			#REFACTOR update 'view_count' in questions
-			questions.update_one(myquery, { "$set": { "view_count" : my_question['view_count']} } )
+			#questions.update_one(myquery, { "$set": { "view_count" : my_question['view_count']} } )
+			upsertQuestion(my_question)
 
 		my_question = json.loads(dumps(my_question))
 		print("Question Contents: ", my_question)
@@ -234,11 +243,11 @@ class GetQuestion(Resource):
 		client = getMongoClient()
 		db = client["Project"]
 		questions = db['questions']
-		id_query = {"id" : id}
-		if questions.count(id_query) == 0:
-			return make_response(jsonify(status="error", error="No existing question ID"), 400)
-		my_question = questions.find_one(id_query)
+		id_query = {"id": id}
 
+		my_question = getQuestionByID(id)
+		if not my_question:
+			return make_response(jsonify(status="error", error="No existing question ID"), 400)
 		#Make sure this is the right user
 		this_username = get_jwt_identity()
 		question_username = my_question['user']['username']
@@ -269,7 +278,8 @@ def delete_question(my_question):
 	db = client["Project"]
 	users = db['users']
 	user_query = {"username": my_username}
-	my_user = users.find_one(user_query)
+#	my_user = users.find_one(user_query)
+	my_user = getUserByName(my_username)
 	if not my_user:	#no valid user for this question
 		print("NO VALID USER HERE")
 		return_data = {}
@@ -282,8 +292,10 @@ def delete_question(my_question):
 	print("Question ID to Remove: ", my_question['id'])
 	print("Questions Owned by This User: ", questions_by_user)
 	questions_by_user.remove(my_question['id'])
+	my_user['questions'] = questions_by_user
 	#REFACTOR update 'questions' in 'user'
-	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
+#	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
+	upsertUser(my_user)
 
 	#delete all answers
 	for answer in my_question['answers']:
@@ -298,12 +310,12 @@ def delete_question(my_question):
 #@param an answer ID
 #@return nothing
 def delete_answer(answer_id):
-	client = getMongoClient()
-	db = client["Project"]
-	answers = db['answers']
-	answer_query = {'id' : answer_id}
-	my_answer = answers.find_one(answer_query)
-	
+#	client = getMongoClient()
+#	db = client["Project"]
+#	answers = db['answers']
+#	answer_query = {'id' : answer_id}
+	#my_answer = answers.find_one(answer_query)
+	my_answer = getAnswerByID(answer_id)
 	#if answer not found
 	if not my_answer:
 		print("No answer found when trying to delete. Answer ID: ", my_answer['id'])
@@ -311,14 +323,17 @@ def delete_answer(answer_id):
 
 	#Delete user's reference to this answer
 	my_username = my_answer['user']
-	users = db['users']
-	user_query = {"username": my_username}
-	my_user = users.find_one(user_query)
+#	users = db['users']
+#	user_query = {"username": my_username}
+	#my_user = users.find_one(user_query)
+	my_user = getUserByName(my_username)
 
 	answers_by_user = my_user['answers']
 	answers_by_user.remove(my_answer['id'])
+	my_user['answers'] = answers_by_user
 	#REFACTOR update 'answers' in 'user'
-	users.update_one(user_query, {"$set": {"answers": answers_by_user}})
+#	users.update_one(user_query, {"$set": {"answers": answers_by_user}})
+	upsertUser(my_user)
 
 	#PART3: remove associated reputation
 class AddAnswer(Resource):
@@ -358,24 +373,36 @@ class AddAnswer(Resource):
 		dToInsert['media'] = media
 		print(dumps(dToInsert))
 		#REFACTOR new entry in 'answers'
-		col.insert_one(dToInsert)
+		#col.insert_one(dToInsert)
+		upsertAnswer(dToInsert())
 		
 		#add this answer to the question's answer list
-		questions = db["questions"]
-		myquery = {'id' : id}
-		question = questions.find_one(myquery)
+		#questions = db["questions"]
+		#myquery = {'id' : id}
+		#question = questions.find_one(myquery)
+		question = getQuestionByID(id)
+		
+		if not question:
+			return jsonify(status="error", error="no question with given ID")
+
 		question['answers'].append(answer_id)
+		question['answer_count'] = question['answer_count']+1
 		#REFACTOR update 'answers' in 'questions'
 		#REFACTOR update 'answer_count' in 'questions'
-		questions.update_one(myquery, {"$set": {"answers" : question['answers']}})
-		questions.update_one(myquery, {"$set": {"answer_count" : question['answer_count'] + 1}})
-		user_col = db["users"]
-		user_query = {"username": get_jwt_identity()}
-		my_user = user_col.find_one(user_query)
-		my_answer_list = my_user['answers']
-		my_answer_list.append(dToInsert['id'])
+		#questions.update_one(myquery, {"$set": {"answers" : question['answers']}})
+		#questions.update_one(myquery, {"$set": {"answer_count" : question['answer_count'] + 1}})
+		upsertQuestion(question)
+
+		#user_col = db["users"]
+		#user_query = {"username": get_jwt_identity()}
+		#my_user = user_col.find_one(user_query)
+		my_user = getUserByName(get_jwt_identity)
+		#my_answer_list = my_user['answers']
+		#my_answer_list.append(dToInsert['id'])
+		my_user['answers'].append(dToInsert['id'])
 		#REFACTOR update 'answers' in 'user'
-		user_col.update_one(user_query, {"$set": {'answers': my_answer_list}})
+		#user_col.update_one(user_query, {"$set": {'answers': my_answer_list}})
+		upsertUser(my_user)
 		
 		return jsonify(status="OK", id=answer_id)  
 class GetAnswers(Resource):
@@ -396,23 +423,14 @@ class GetAnswers(Resource):
 	@jwt_optional
 	def get(self, id):
 		#get every answer from the question's "answers" array
-		client = getMongoClient()
-		db = client["Project"]
-		questions = db["questions"]
-		myquery = {"id" : id}
-		
-		question = questions.find_one(myquery)
-		
+		question = getQuestionByID(id)
 		if not question:
 			return jsonify(status="error", error="No question with given ID")
-		
-		
+				
 		#get all answers from that question
 		results = []
-		answer_col = db["answers"]
 		for answerID in question["answers"]:
-			myquery2 = {"id" : answerID}
-			answer = answer_col.find_one(myquery2)
+			answer = getAnswerByID(answerID)
 			results.append(json.loads(dumps(answer)))
 		
 		return jsonify(answers=results, status="OK")
@@ -564,6 +582,7 @@ api.add_resource(GetQuestion, '/questions/<id>')
 api.add_resource(AddAnswer, '/questions/<id>/answers/add')
 api.add_resource(GetAnswers, '/questions/<id>/answers')
 api.add_resource(SearchQuestion, '/search')
+api.add_resource(AddMedia, '/addmedia')
 api.add_resource(ViewQuestion, '/view/questions/<id>')
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', debug=True)
