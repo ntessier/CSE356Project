@@ -49,6 +49,7 @@ class AddUser(Resource):
 			dataToInsert['reputation'] = 1
 			dataToInsert['questions'] = []	#list of question IDs
 			dataToInsert['answers'] = [] 	#list of answer IDs
+			#REFACTOR new entry in 'user'
 			mycol.insert_one(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			msg = "\nHello " + username + "!\n Please click this link to\
@@ -83,10 +84,12 @@ class VerifyUser(Resource):
 		else:
 			if row['validated'] is False and row['verificationCode'] == key:
 				print("\n VALIDATED WITH CODE")
+				#REFACTOR update 'validated' in 'user'
 				mycol.update_one(myquery, { "$set": { "validated" : True} })
 				return jsonify(status="OK")
 			elif row['validated'] is False and key == 'abracadabra':
 				print("\n VALIDATED SUCCESSFULLY WITH BACKDOOR")
+				#REFACTOR update 'validated' in 'user'
 				mycol.update_one(myquery, { "$set": { "validated" : True} })
 				return jsonify(status="OK")
 			else:

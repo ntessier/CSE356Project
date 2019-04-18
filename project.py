@@ -81,6 +81,8 @@ class LoginUser(Resource):
 			if row1['password'] == password and row1['validated'] is True:
 				access_token = create_access_token(identity=row1['username'])
 				refresh_token = create_refresh_token(identity=row1['username'])
+				#REFACTOR update 'access_token' in 'user'
+				#REFACTOR update 'refresh_token' in 'user'
 				mycol.update_one(myquery, {"$set": {"access_token" : access_token} })
 				mycol.update_one(myquery, {"$set": {"refresh_token" : refresh_token} })
 				resp = jsonify({"status":"OK"})
@@ -176,6 +178,7 @@ class AddQuestion(Resource):
 		dToInsert['id'] = generateNewID() 
 		dToInsert['answers'] = []	#empty array of answer IDs
 		#print(dumps(dToInsert))
+		#REFACTOR add entry in 'question'
 		col.insert_one(dToInsert)
 
 		#add the question to this user's question list
@@ -183,13 +186,14 @@ class AddQuestion(Resource):
 		user_query = {"username": get_jwt_identity()}
 		my_user = user_col.find_one(user_query)
 		my_questions_list = my_user['questions']
-		my_questions_list.append(str(dToInsert['id']))
+		my_questions_list.append(dToInsert['id'])
+		#REFACTOR update 'questions' in 'user'
 		user_col.update_one(user_query, {"$set": {'questions': my_questions_list}})
 		
 		#print("right before the return, ID: ", dToInsert['id'])	
 		#print("right before the return,ID (int): ", int(dToInsert['id']))
 	
-		return jsonify(status="OK", id=str(dToInsert['id']))
+		return jsonify(status="OK", id=dToInsert['id'])
 
 class GetQuestion(Resource):
 	@jwt_optional
@@ -205,21 +209,23 @@ class GetQuestion(Resource):
 		db = client["Project"]
 		col = db["visits"]
 		questions = db['questions']
-		myquery = {"id" : int(id)}
-		myquery2 = {"id" : int(id), "identifier": visit['identifier']}
-		print("QUESTION ID type: ", int(id))
+		myquery = {"id" : id}
+		myquery2 = {"id" : id, "identifier": visit['identifier']}
+		print("QUESTION ID type: ", id)
 		if questions.count(myquery) == 0:
 			return jsonify(status="error", error="No existing question ID")
 		my_question = questions.find_one(myquery)
 		if col.count(myquery2) == 0: #unique visit!
-			visit['id'] = int(id)
+			visit['id'] = id
+			#REFACTOR new entry in 'visit'
 			col.insert_one(visit)
 			my_question['view_count'] = my_question['view_count'] + 1
+			#REFACTOR update 'view_count' in questions
 			questions.update_one(myquery, { "$set": { "view_count" : my_question['view_count']} } )
 
 		my_question = json.loads(dumps(my_question))
 		print("Question Contents: ", my_question)
-		my_question['id'] = str(my_question['id'])
+		#my_question['id'] = my_question['id']
 		return jsonify(status="OK", question=my_question)
 
 	@custom_validator
@@ -228,7 +234,7 @@ class GetQuestion(Resource):
 		client = getMongoClient()
 		db = client["Project"]
 		questions = db['questions']
-		id_query = {"id" : int(id)}
+		id_query = {"id" : id}
 		if questions.count(id_query) == 0:
 			return make_response(jsonify(status="error", error="No existing question ID"), 400)
 		my_question = questions.find_one(id_query)
@@ -244,7 +250,7 @@ class GetQuestion(Resource):
 		print(delete_response)
 		if delete_response['status'] == "error":
 			return make_response(jsonify(status="error", error="cannot delete question"),400)
-
+		#REFACTOR delete entry from 'questions'
 		questions.delete_one(id_query)
 
 		return make_response(jsonify(delete_response), 200)
@@ -275,7 +281,8 @@ def delete_question(my_question):
 
 	print("Question ID to Remove: ", my_question['id'])
 	print("Questions Owned by This User: ", questions_by_user)
-	questions_by_user.remove(str(my_question['id']))
+	questions_by_user.remove(my_question['id'])
+	#REFACTOR update 'questions' in 'user'
 	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
 
 	#delete all answers
@@ -310,6 +317,7 @@ def delete_answer(answer_id):
 
 	answers_by_user = my_user['answers']
 	answers_by_user.remove(my_answer['id'])
+	#REFACTOR update 'answers' in 'user'
 	users.update_one(user_query, {"$set": {"answers": answers_by_user}})
 
 	#PART3: remove associated reputation
@@ -349,23 +357,27 @@ class AddAnswer(Resource):
 		dToInsert['timestamp'] = time.time()
 		dToInsert['media'] = media
 		print(dumps(dToInsert))
+		#REFACTOR new entry in 'answers'
 		col.insert_one(dToInsert)
 		
 		#add this answer to the question's answer list
 		questions = db["questions"]
-		myquery = {'id' : int(id)}
+		myquery = {'id' : id}
 		question = questions.find_one(myquery)
 		question['answers'].append(answer_id)
+		#REFACTOR update 'answers' in 'questions'
+		#REFACTOR update 'answer_count' in 'questions'
 		questions.update_one(myquery, {"$set": {"answers" : question['answers']}})
 		questions.update_one(myquery, {"$set": {"answer_count" : question['answer_count'] + 1}})
 		user_col = db["users"]
 		user_query = {"username": get_jwt_identity()}
 		my_user = user_col.find_one(user_query)
 		my_answer_list = my_user['answers']
-		my_answer_list.append(str(dToInsert['id']))
+		my_answer_list.append(dToInsert['id'])
+		#REFACTOR update 'answers' in 'user'
 		user_col.update_one(user_query, {"$set": {'answers': my_answer_list}})
 		
-		return jsonify(status="OK", id=str(answer_id))  
+		return jsonify(status="OK", id=answer_id)  
 class GetAnswers(Resource):
 	#get all answers for the question with the given id
 	#params:
@@ -387,7 +399,7 @@ class GetAnswers(Resource):
 		client = getMongoClient()
 		db = client["Project"]
 		questions = db["questions"]
-		myquery = {"id" : int(id)}
+		myquery = {"id" : id}
 		
 		question = questions.find_one(myquery)
 		
@@ -479,6 +491,7 @@ class SearchQuestion(Resource):
 			#my_cursor = col.find(my_query, {'_score', {'$meta': 'textScore'}})
 			#my_cursor.sort([('_score', {'$meta': 'textScore'})])
 			#my_cursor = col.find(my_query).sort([("_txtscore",{"$meta":"textScore"})])
+			#TODO: use elasticsearch
 			my_cursor = col.find(my_query, {'_txtscore':{'$meta':'textScore'}}).sort([("_txtscore",{"$meta":"textScore"})])
 			#my_cursor = col.find(my_query).sort('score')
 			##my_cursor = col.find(my_query).project({ "_txtscore": {"$meta" : "textScore"}}).sort({"_txtscore":{"$meta" : "textScore"}})
