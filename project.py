@@ -21,7 +21,6 @@ from addUser import AddUser, VerifyUser
 #from login import LoginUser, LogoutUser, TokenRefresh
 from mongoConnection import getMongoClient
 from mongoAccess import *
-from mediaAccess import AddMedia
 from flask_jwt_extended.tokens import decode_jwt
 from flask_jwt_extended.utils import has_user_loader, user_loader
 from generateID import generateNewID
@@ -50,7 +49,7 @@ def custom_validator(fn):
 			return make_response(jsonify(status="error", error="Trying to access page that requires login"), 400)
 		return fn(*args, **kwargs)   
 	return wrapper
-
+from mediaAccess import GetMedia, AddMedia
 
 app.config['MONGO_URI'] = os.environ.get('DB')
 app.config['JWT_SECRET_KEY'] = 'SECRET'
@@ -334,6 +333,11 @@ def delete_answer(answer_id):
 	#REFACTOR update 'answers' in 'user'
 #	users.update_one(user_query, {"$set": {"answers": answers_by_user}})
 	upsertUser(my_user)
+class UpvoteQuestion(Resource):
+	@custom_validator
+	def upvote_question(self, id):
+		#TODO
+		return "hi"
 
 	#PART3: remove associated reputation
 class AddAnswer(Resource):
@@ -435,6 +439,26 @@ class GetAnswers(Resource):
 		
 		return jsonify(answers=results, status="OK")
 
+class UpvoteAnswer(Resource):
+	@custom_validator
+	def upvote_answer(self, id):
+		my_answer = getAnswerByID(id)
+		if not my_answer:
+			return make_response(jsonify(status="error", error="No answer with given ID"), 400)
+		my_user = getUserByName(my_answer['user'])
+		if not my_user:
+			return make_response(jsonify(status="error", error="No corresponding poster???"), 400)
+
+		#TODO: update the reputation of my_user and my_answer
+		voting_user = getUserByName(get_jwt_identity())
+		
+
+		#update the reputation of the answer and the 
+class AcceptAnswer(Resource):
+	@custom_validator
+	def accept_answer(self, id):
+		#TODO
+		return "hi"
 class SearchQuestion(Resource):
 	#search for questions
 	#params:
@@ -581,8 +605,12 @@ api.add_resource(AddQuestion, '/questions/add')
 api.add_resource(GetQuestion, '/questions/<id>')
 api.add_resource(AddAnswer, '/questions/<id>/answers/add')
 api.add_resource(GetAnswers, '/questions/<id>/answers')
+api.add_resource(UpvoteQuestion, '/questions/<id>/upvote')
+api.add_resource(UpvoteAnswer, '/answers/<id>/upvote')
+api.add_resource(AcceptAnswer, '/answers/<id>/accept')
 api.add_resource(SearchQuestion, '/search')
 api.add_resource(AddMedia, '/addmedia')
+api.add_resource(GetMedia, '/media/<id>')
 api.add_resource(ViewQuestion, '/view/questions/<id>')
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', debug=True)

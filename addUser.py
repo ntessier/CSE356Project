@@ -6,6 +6,7 @@ import random
 import string
 import smtplib, ssl
 from mongoConnection import getMongoClient
+from mongoAccess import *
 #import logging
 
 parser1 = reqparse.RequestParser()
@@ -49,8 +50,11 @@ class AddUser(Resource):
 			dataToInsert['reputation'] = 1
 			dataToInsert['questions'] = []	#list of question IDs
 			dataToInsert['answers'] = [] 	#list of answer IDs
+			dataToInsert['upvoted'] = []
+			dataToInsert['downvoted'] = []
 			#REFACTOR new entry in 'user'
-			mycol.insert_one(dataToInsert)
+#			mycol.insert_one(dataToInsert)
+			upsertUser(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			msg = "\nHello " + username + "!\n Please click this link to\
 			verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
