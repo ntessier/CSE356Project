@@ -19,6 +19,8 @@ def upsertQuestion(my_question):
 	db = client["Project"]
 	question_col = db["questions"]
 	question_col.replace_one({"id" : my_question['id']}, my_question, upsert=True)
+	print("added")
+	print(my_question)
 
 #Get Answer by ID
 #return the Answer document, None if no answer exists

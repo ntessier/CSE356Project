@@ -18,11 +18,12 @@ parser1.add_argument('password')
 class AddUser(Resource):
 	def post(self):
 		
-		server = smtplib.SMTP('smtp.gmail.com', 587)
-		server.ehlo()
-		server.starttls(context = ssl.create_default_context())
-		server.ehlo()
-		server.login("warmupproject2@gmail.com", "dummyemail")
+		#server = smtplib.SMTP('localhost', 587)
+		server = smtplib.SMTP('localhost')
+		#server.ehlo()
+		#server.starttls(context = ssl.create_default_context())
+		#server.ehlo()
+		#server.login("warmupproject2@gmail.com", "dummyemail")
 
 
 		args = parser1.parse_args()
@@ -37,10 +38,10 @@ class AddUser(Resource):
 		print("mycol: " + str(mycol))
 		myquery = {"email": email}
 		myquery2 = {"username": username}
-		row1 = mycol.count(myquery)
-		row2 = mycol.count(myquery2)
+		row1 = mycol.find_one(myquery)
+		row2 = mycol.find_one(myquery2)
 
-		if row1 == 0 and row2 == 0:
+		if not row1 and not row2:
 			dataToInsert = {}
 			dataToInsert['username'] = username
 			dataToInsert['password'] = password
@@ -52,18 +53,19 @@ class AddUser(Resource):
 			dataToInsert['answers'] = [] 	#list of answer IDs
 			dataToInsert['upvoted'] = []
 			dataToInsert['downvoted'] = []
+			dataToInsert['waived_downvoted'] = []
 			#REFACTOR new entry in 'user'
 #			mycol.insert_one(dataToInsert)
 			upsertUser(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			msg = "\nHello " + username + "!\n Please click this link to\
 			verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
-			server.sendmail("warmupproject2@gmail.com", email, msg2)
+			server.sendmail("ubuntu@projectinstance.cloud.compas.cs.stonybrook.edu", email, msg2)
 			print("SENT MAIL SUCCESSFULY\n")
 			server.quit()
 			return jsonify(status="OK")
 		else:
-			return jsonify(status="error", error="Account already exists!")
+			return make_response(jsonify(status="error", error="Account already exists!"), 400)
 	def get(self):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('adduser.html'), headers)
@@ -77,28 +79,34 @@ class VerifyUser(Resource):
 
 		email = json['email']
 		key = json['key']
-		myclient = getMongoClient()
-		mydb = myclient["Project"]
-		mycol = mydb["users"]
-		myquery = {"email" : email}
-		row = mycol.find_one(myquery)
-		if row is None:
+		#myclient = getMongoClient()
+		#mydb = myclient["Project"]
+		#mycol = mydb["users"]
+		#myquery = {"email" : email}
+		#row = mycol.find_one(myquery)
+		row = getUserByEmail(email)
+		if not row:
 			print("email not found")
-			return jsonify(status="error", error="Email not found!")
+			return make_response(jsonify(status="error", error="Email not found!"), 400)
 		else:
 			if row['validated'] is False and row['verificationCode'] == key:
 				print("\n VALIDATED WITH CODE")
 				#REFACTOR update 'validated' in 'user'
-				mycol.update_one(myquery, { "$set": { "validated" : True} })
+				#mycol.update_one(myquery, { "$set": { "validated" : True} })
+				row['validated'] = True
+				upsertUser(row)
 				return jsonify(status="OK")
 			elif row['validated'] is False and key == 'abracadabra':
 				print("\n VALIDATED SUCCESSFULLY WITH BACKDOOR")
 				#REFACTOR update 'validated' in 'user'
-				mycol.update_one(myquery, { "$set": { "validated" : True} })
+				#mycol.update_one(myquery, { "$set": { "validated" : True} })
+				row['validated'] = True
+				upsertUser(row)
+
 				return jsonify(status="OK")
 			else:
 				print("\nVALIDATION ERROR")
-				return jsonify(status="error", error="VerificationCode doesn't match or user is already validated!")
+				return make_response(jsonify(status="error", error="VerificationCode doesn't match or user is already validated!"), 400)
 
 			
 

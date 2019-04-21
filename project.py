@@ -76,7 +76,7 @@ class LoginUser(Resource):
 		print("Made it past the row1 find_one(myquery)")
 		if mycol.count(myquery) == 0:
 			print("no login found")
-			return jsonify(status="error")
+			return make_response(jsonify(status="error"), 400)
 		else:
 			if row1['password'] == password and row1['validated'] is True:
 				access_token = create_access_token(identity=row1['username'])
@@ -90,7 +90,7 @@ class LoginUser(Resource):
 				set_refresh_cookies(resp, refresh_token)
 				return resp
 			else:
-				return jsonify(status="error")
+				return make_response(jsonify(status="error"), 400)
 	def get(self):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('login.html'), headers)
@@ -107,7 +107,7 @@ class GetUser(Resource):
 		my_user = getUserByName(my_username)
 		if not my_user:
 			error_msg = "No user by the name "+my_username
-			return jsonify(status = "error", error = error_msg)
+			return make_response(jsonify(status = "error", error = error_msg), 400)
 
 		return jsonify(status = "OK", user = json.loads(dumps(my_user)))	
 
@@ -123,7 +123,7 @@ class GetUserQuestions(Resource):
 		my_user = getUserByName(my_username)
 		if not my_user:
 			error_msg = "No user by the name "+my_username
-			return jsonify(status = "error", error = error_msg)
+			return make_response(jsonify(status = "error", error = error_msg), 400)
 		return jsonify(status = "OK", questions = my_user['questions'])
 
 class GetUserAnswers(Resource):
@@ -138,7 +138,7 @@ class GetUserAnswers(Resource):
 		my_user = getUserByName(my_username)
 		if not my_user: 
 			error_msg = "No user by the name "+my_username
-			return jsonify(status = "error", error = error_msg)
+			return make_response(jsonify(status = "error", error = error_msg), 400)
 		return jsonify(status = "OK", answers = my_user['answers'])
 
 
@@ -150,17 +150,18 @@ class AddQuestion(Resource):
 			json = request.get_json()
 			#print("JSON upon entering AddQuestion: " + dumps(json))
 		else:
-			return jsonify(status="error", error="Request isn't json")
+			print("request not json")
+			return make_response(jsonify(status="error", error="Request isn't json"), 400)
 		if not "title" in json:
 			print("Missing a title")
-			return jsonify(status="error", error="Missing parameter: title")
+			return make_response(jsonify(status="error", error="Missing parameter: title"), 400)
 		if not "body" in json:	
 			print("Missing a body")
-			return jsonify(status="error", error="Missing parameter: title")
+			return make_response(jsonify(status="error", error="Missing parameter: title"), 400)
 		if not "tags" in json:
 			print("Missing tags")
 			#json['tags'] = []
-			return jsonify(status="error", error="Missing parameter: tags")
+			return make_response(jsonify(status="error", error="Missing parameter: tags"), 400)
 		title = json['title']
 		body = json['body']
 		tags = json['tags']
@@ -220,7 +221,7 @@ class GetQuestion(Resource):
 		
 		my_question = getQuestionByID(id)
 		if not my_question:
-			return jsonify(status="error", error="No existing question ID")
+			return make_response(jsonify(status="error", error="No existing question ID"), 400)
 		
 		if col.count(myquery2) == 0: #unique visit!
 			visit['id'] = id
@@ -336,8 +337,33 @@ def delete_answer(answer_id):
 class UpvoteQuestion(Resource):
 	@custom_validator
 	def upvote_question(self, id):
-		#TODO
-		return "hi"
+		if request.is_json():
+			my_json = request.get_json()
+		else:
+			return make_response(jsonify(status="error", error="Request isn't json"), 400)
+		vote = None	#true if upvote, false if downvote
+		if 'upvote' in my_json:
+			vote = my_json['upvote']
+		if not vote:
+			return make_response(jsonify(status="error", error="Invalid arguments: upvote not found"), 400)
+
+		my_question = getQuestionByID(id)
+		my_question_id = my_question['id']
+		if not my_question:
+			return make_response(jsonify(status="error", error="No question with given ID"), 400)
+		my_user = getUserByName(my_answer['user'])
+		if not my_user:
+			return make_response(jsonify(status="error", error="No corresponding poster???"), 400)
+
+		voting_user = getUserByName(get_jwt_identity())
+
+		#TODO: call vote functions
+		if vote:
+			upvote_object(voting_user, my_question, my_user)
+		else:
+			downvote_object(voting_user, my_question, my_user)
+		return jsonify(status = "OK")
+
 
 	#PART3: remove associated reputation
 class AddAnswer(Resource):
@@ -356,7 +382,7 @@ class AddAnswer(Resource):
 		else:
 			return jsonify(status="error", error="Request isn't json")
 		if not "body" in json:
-			return jsonify(status="error", error="missing argument: 'body'")
+			return make_response(jsonify(status="error", error="missing argument: 'body'"), 400)
 		body = json['body']
 		
 		media = []
@@ -378,7 +404,7 @@ class AddAnswer(Resource):
 		print(dumps(dToInsert))
 		#REFACTOR new entry in 'answers'
 		#col.insert_one(dToInsert)
-		upsertAnswer(dToInsert())
+		upsertAnswer(dToInsert)
 		
 		#add this answer to the question's answer list
 		#questions = db["questions"]
@@ -387,7 +413,7 @@ class AddAnswer(Resource):
 		question = getQuestionByID(id)
 		
 		if not question:
-			return jsonify(status="error", error="no question with given ID")
+			return make_response(jsonify(status="error", error="no question with given ID"), 400)
 
 		question['answers'].append(answer_id)
 		question['answer_count'] = question['answer_count']+1
@@ -400,7 +426,7 @@ class AddAnswer(Resource):
 		#user_col = db["users"]
 		#user_query = {"username": get_jwt_identity()}
 		#my_user = user_col.find_one(user_query)
-		my_user = getUserByName(get_jwt_identity)
+		my_user = getUserByName(get_jwt_identity())
 		#my_answer_list = my_user['answers']
 		#my_answer_list.append(dToInsert['id'])
 		my_user['answers'].append(dToInsert['id'])
@@ -429,7 +455,7 @@ class GetAnswers(Resource):
 		#get every answer from the question's "answers" array
 		question = getQuestionByID(id)
 		if not question:
-			return jsonify(status="error", error="No question with given ID")
+			return make_response(jsonify(status="error", error="No question with given ID"), 400)
 				
 		#get all answers from that question
 		results = []
@@ -442,23 +468,147 @@ class GetAnswers(Resource):
 class UpvoteAnswer(Resource):
 	@custom_validator
 	def upvote_answer(self, id):
+		if request.is_json():
+			my_json = request.get_json()
+		else:
+			return jsonify(status="error", error="Request isn't json")
+		vote = None	#true if upvote, false if downvote
+		if 'upvote' in my_json:
+			vote = my_json['upvote']
+		if not vote:
+			return make_response(jsonify(status="error", error="Invalid arguments: upvote not found"), 400)
+
 		my_answer = getAnswerByID(id)
+		my_answer_id = my_answer['id']
 		if not my_answer:
 			return make_response(jsonify(status="error", error="No answer with given ID"), 400)
 		my_user = getUserByName(my_answer['user'])
 		if not my_user:
 			return make_response(jsonify(status="error", error="No corresponding poster???"), 400)
 
-		#TODO: update the reputation of my_user and my_answer
 		voting_user = getUserByName(get_jwt_identity())
-		
 
-		#update the reputation of the answer and the 
+		#TODO: call vote functions
+		if vote:
+			upvote_object(voting_user, my_answer, my_user)
+		else:
+			downvote_object(voting_user, my_answer, my_user)
+		return jsonify(status = "OK")
+
+
+#upvote an object
+#params are all jsons
+#responsible for updating everything about the jsons, and reporting to appropriate "write" calls
+def upvote_object(voter, obj, obj_owner):
+	my_id = obj['id']
+
+	#remove downvote
+	if my_id in voter['waived_downvoted']:
+		obj['score'] += 1
+		voter['waived_downvoted'].remove(my_id)
+	elif obj['id'] in voter['downvoted']:
+		obj['score'] += 1
+		voter['downvoted'].remove(my_id)
+		obj_owner['reputation'] += 1
+
+	#unupvote
+	if obj['id'] in voter['upvoted']:
+		obj['score'] -= 1
+		voter['upvoted'].remove(obj['id'])
+		if obj_owner['reputation'] > 2:
+			obj_owner['reputation'] -= 1
+		#TODO: consider waiving removal for low rep user?
+		
+	
+	#upvote	
+	else:
+		#increment owner rep. increment object score. add to "upvoted" list
+		obj['score'] += 1
+		obj_owner['reputation'] += 1
+		voter['upvoted'].append(obj['id'])
+	
+	upsertUser(voter) 
+	upsertUser(obj_owner)
+	if 'is_accpted' in obj:
+		upsertAnswer(obj)
+	else:
+		upsertQuestion(obj)
+
+
+
+#downvote an object
+def downvote_object(voter, obj, obj_owner):
+	owner_changed = False
+	my_id = obj['id']
+	
+	#remove upvote
+	if my_id in voter['upvoted']:
+		obj['score'] -= 1
+		voter['upvoted'].remove(my_id)
+		if obj_owner['reputation'] >= 2:
+			obj_owner['reputation'] -= 1
+			owner_changed = True
+			
+	
+	#undownvote
+	if obj['id'] in voter['waived_downvoted']:
+		#remove waived downvote
+		#increment object score. do nothing to owner rep. remove from list
+		obj['score'] += 1
+		voter['waived_downvoted'].remove(obj['id'])
+	elif obj['id'] in voter['downvoted']:
+		#remove valid downvote
+		#increment object score. increment owner score. remove from list
+		obj['score'] += 1
+		voter['downvoted'].remove(obj['id'])
+		obj_owner['reputation'] += 1
+		owner_changed = True
+
+	#downvote	
+	else:
+		obj['score'] -= 1
+		if obj_owner['reputation'] < 2:
+			#do nothing to rep. add to "waived" list
+			voter['waived_downvoted'].append(obj['id'])
+			
+		else:
+			#decrement rep. add to "downvoted" list
+			obj_owner['reputation'] -= 1
+			voter['downvoted'].append(obj['id'])
+			owner_changed = True
+
+
+	upsertUser(voter) 
+	if owner_changed:
+		upsertUser(obj_owner)
+	if 'is_accpted' in obj:
+		upsertAnswer(obj)
+	else:
+		upsertQuestion(obj)
+	
 class AcceptAnswer(Resource):
 	@custom_validator
 	def accept_answer(self, id):
-		#TODO
-		return "hi"
+		current_user = getUserByName(get_jwt_identity())
+		for questionID in current_user['questions']:
+			question = getQuestionByID(questionID)
+			for answerID in question['answers']:
+				if answerID == id:
+					question['accepted_answer_id'] = id
+					upsertQuestion(question)
+					answer = getAnswerByID(id)
+					userWithAnswer = getUserByName(answer['user'])
+					userWithAnswer['reputation'] = userWithAnswer['reputation'] + 15
+					upsertUser(userWithAnswer)
+					return jsonify(status="OK")
+
+		return make_response(jsonify(status="error", message = "answer ID may not be users answer or answer ID doesn't exst"), 400)
+		
+
+
+
+
+#edited?
 class SearchQuestion(Resource):
 	#search for questions
 	#params:
@@ -480,11 +630,11 @@ class SearchQuestion(Resource):
 		limit = 25
 		accepted = "False"	#keep parameters as a string
 		q = None
-		#q = ""		
-		#sort_by = "score"
-		#tags = []
-		#has_media = "False"
+		sort_by = "score"
+		tags = []
+		has_media = "False"
 		
+
 		if 'timestamp' in my_json:
 			timestamp = my_json['timestamp']
 		if 'limit' in my_json:
@@ -497,6 +647,13 @@ class SearchQuestion(Resource):
                         accepted = my_json['accepted']
 		if 'q' in my_json:
 			q = my_json['q']
+		if 'sort_by' in my_json:
+			sort_by = my_json['sort_by']
+		if 'tags' in my_json:
+			tags = my_json['tags']
+		if 'has_media' in my_json:
+			has_media in my_json['has_media']
+
 			
 	
 		results = [] #array of questions
@@ -504,41 +661,46 @@ class SearchQuestion(Resource):
 		client = getMongoClient()
 		db = client["Project"]
 		col = db["questions"]
-		#if accepted == "False":
-		#	my_cursor = col.find({"timestamp": {"$lt": timestamp}}).sort("score")
-		#else:
-		#	my_cursor = col.find({"timestamp": {"$lt": timestamp}, "accepted_answer_id": {"$ne": None}}).sort("score")
 		my_query = {}
+		
 		#if query string specified, only return questions with matching title or body
 		if q:
 			index_name = "search_index"
 			index_info = col.index_information()
 			if index_name not in col.index_information():
-				print("GOING TO MAKE THE INDEX")
-				print("INDEX_INFO: ",index_info)
 				col.create_index([('body',pymongo.TEXT),('title',pymongo.TEXT)],name=index_name,default_language='none')
-			print("Search Query: ", q)
-			print("limit: ", limit)
-			print("timestamp: ", timestamp)
+			#print("Search Query: ", q)
+			#print("limit: ", limit)
+			#print("timestamp: ", timestamp)
 			my_query["$text"] = {"$search": q}
-			#my_query["_txtscore"] = {"$meta": 'textScore'}
-
 		
 		my_query["timestamp"] = {"$lt": timestamp}
 		
 		#if "accepted" param is on, only give questions where acc_id is not None
 		if accepted != "False":
-			my_query["accepted_answer_id"] = {"$ne": None}	
+			my_query["accepted_answer_id"] = {"$ne": None}
+		if has_media != "False":
+			my_query["media"] = {"$ne": []}
+		if tags != []:
+			my_query["tags"] = {"$all": tags}
 		if q:
 			#my_cursor = col.find(my_query, {'_score', {'$meta': 'textScore'}})
 			#my_cursor.sort([('_score', {'$meta': 'textScore'})])
 			#my_cursor = col.find(my_query).sort([("_txtscore",{"$meta":"textScore"})])
 			#TODO: use elasticsearch
-			my_cursor = col.find(my_query, {'_txtscore':{'$meta':'textScore'}}).sort([("_txtscore",{"$meta":"textScore"})])
-			#my_cursor = col.find(my_query).sort('score')
-			##my_cursor = col.find(my_query).project({ "_txtscore": {"$meta" : "textScore"}}).sort({"_txtscore":{"$meta" : "textScore"}})
+			#my_cursor = col.find(my_query, {'_txtscore':{'$meta':'textScore'}}).sort([("_txtscore",{"$meta":"textScore"})])
+			if sort_by != "score":
+				my_cursor = col.find(my_query, {'_txtscore':{'$meta':'textScore'}}).sort([("_txtscore",{"$meta":"textScore"})]).limit(limit).sort("timestamp", pymongo.DESCENDING)
+			else:
+				my_cursor = col.find(my_query, {'_txtscore':{'$meta':'textScore'}}).sort([("_txtscore",{"$meta":"textScore"})]).limit(limit).sort("score", pymongo.DESCENDING)
+
+
 		else:
-			my_cursor = col.find(my_query).sort("score")
+			if sort_by != "score":
+				my_cursor = col.find(my_query).sort("timestamp", pymongo.DESCENDING)
+			else:
+				my_cursor = col.find(my_query).sort("score", pymongo.DESCENDING)
+
 		for i in range(limit):
 			question_element = next(my_cursor, None)
 			if question_element:
