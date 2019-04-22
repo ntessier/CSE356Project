@@ -56,9 +56,10 @@ app.config['JWT_SECRET_KEY'] = 'SECRET'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
-app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
-
+app.config['JWT_ACCESS_COOKIE_NAME'] = "access_token"
+app.config['JWT_REFRESH_COOKIE_NAME'] = "refresh_token"
 parser2 = reqparse.RequestParser()
 parser2.add_argument('username')
 parser2.add_argument('password')
@@ -72,9 +73,9 @@ class LoginUser(Resource):
 		mycol = mydb["users"]
 		myquery = {"username": username}
 		print("Made it in this loginuser method")
-		row1 = mycol.find_one(myquery)
+		row1 = getUserByName(username)
 		print("Made it past the row1 find_one(myquery)")
-		if mycol.count(myquery) == 0:
+		if not row1:
 			print("no login found")
 			return make_response(jsonify(status="error"), 400)
 		else:
@@ -83,8 +84,11 @@ class LoginUser(Resource):
 				refresh_token = create_refresh_token(identity=row1['username'])
 				#REFACTOR update 'access_token' in 'user'
 				#REFACTOR update 'refresh_token' in 'user'
-				mycol.update_one(myquery, {"$set": {"access_token" : access_token} })
-				mycol.update_one(myquery, {"$set": {"refresh_token" : refresh_token} })
+				row1['access_token'] = access_token
+				row1['refresh_token'] = refresh_token
+				upsertUser(row1)
+				#mycol.update_one(myquery, {"$set": {"access_token" : test_token} })
+				#mycol.update_one(myquery, {"$set": {"refresh_token" : refresh_token} })
 				resp = jsonify({"status":"OK"})
 				set_access_cookies(resp, access_token)
 				set_refresh_cookies(resp, refresh_token)
@@ -161,7 +165,10 @@ class AddQuestion(Resource):
 		if not "tags" in json:
 			print("Missing tags")
 			#json['tags'] = []
-			return make_response(jsonify(status="error", error="Missing parameter: tags"), 400)
+			return make_response(jsonify(status="error", error="Missing parameter: tags"), 400)	
+		media = []
+		if "media" in json:
+			media = json['media'] 
 		title = json['title']
 		body = json['body']
 		tags = json['tags']
@@ -177,7 +184,7 @@ class AddQuestion(Resource):
 		dToInsert['view_count'] = 0
 		dToInsert['answer_count'] = 0
 		dToInsert['timestamp'] = time.time() #time.time() should be a unix timestamp
-		dToInsert['media'] = [] #might not be necessary right now bc its future milestone
+		dToInsert['media'] = media
 		dToInsert['accepted_answer_id'] = None
 		dToInsert['id'] = generateNewID() 
 		dToInsert['answers'] = []	#empty array of answer IDs
@@ -240,10 +247,10 @@ class GetQuestion(Resource):
 	@custom_validator
 	def delete(self, id):
 		#find the question
-		client = getMongoClient()
-		db = client["Project"]
-		questions = db['questions']
-		id_query = {"id": id}
+#		client = getMongoClient()
+#		db = client["Project"]
+#		questions = db['questions']
+#		id_query = {"id": id}
 
 		my_question = getQuestionByID(id)
 		if not my_question:
@@ -254,11 +261,17 @@ class GetQuestion(Resource):
 
 		if not this_username == question_username:
 			return make_response(jsonify(status="error", error="Can't delete a question that isn't yours!"), 400)
+		
+			
 		#delete the question
 		delete_response = delete_question(my_question)
 		print(delete_response)
 		if delete_response['status'] == "error":
 			return make_response(jsonify(status="error", error="cannot delete question"),400)
+
+						
+	
+
 		#REFACTOR delete entry from 'questions'
 		questions.delete_one(id_query)
 
@@ -274,10 +287,10 @@ def delete_question(my_question):
 	print("DELETING FOR USER: ", my_username)
 	
 	# delete the reference held by "my_user"
-	client = getMongoClient()
-	db = client["Project"]
-	users = db['users']
-	user_query = {"username": my_username}
+#	client = getMongoClient()
+#	db = client["Project"]
+#	users = db['users']
+#	user_query = {"username": my_username}
 #	my_user = users.find_one(user_query)
 	my_user = getUserByName(my_username)
 	if not my_user:	#no valid user for this question
@@ -293,14 +306,24 @@ def delete_question(my_question):
 	print("Questions Owned by This User: ", questions_by_user)
 	questions_by_user.remove(my_question['id'])
 	my_user['questions'] = questions_by_user
-	#REFACTOR update 'questions' in 'user'
+	
+	#remove reputation gained by the poster
+	my_user['reputation'] -= my_question['score']
+	if my_user['reputation'] < 1:
+		my_user['reputation'] = 1
+
+	#remove associated media from the database
+	for media_id in my_question['media']:
+		#remove from cassandra based on ID
+		removeMediaByID(media_id)
+
 #	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
 	upsertUser(my_user)
 
-	#delete all answers
-	for answer in my_question['answers']:
-		#TODO: obviously inefficient, waiting on every delete. Use message passing?
-		delete_answer(answer)
+	#delete all answers (Do we need to?)
+	#for answer in my_question['answers']:
+#		# obviously inefficient, waiting on every delete. Use message passing?
+#		delete_answer(answer)
 	return_data = {}
 	return_data['status']="OK"
 	print("RETURN DATA: ", return_data)
@@ -334,6 +357,7 @@ def delete_answer(answer_id):
 	#REFACTOR update 'answers' in 'user'
 #	users.update_one(user_query, {"$set": {"answers": answers_by_user}})
 	upsertUser(my_user)
+
 class UpvoteQuestion(Resource):
 	@custom_validator
 	def upvote_question(self, id):
@@ -597,8 +621,11 @@ class AcceptAnswer(Resource):
 					question['accepted_answer_id'] = id
 					upsertQuestion(question)
 					answer = getAnswerByID(id)
+					answer['is_accepted'] = True
 					userWithAnswer = getUserByName(answer['user'])
 					userWithAnswer['reputation'] = userWithAnswer['reputation'] + 15
+					upsertQuestion(question)
+					upsertAnswer(answer)
 					upsertUser(userWithAnswer)
 					return jsonify(status="OK")
 
@@ -738,6 +765,12 @@ class LogoutUser(Resource):
 		#jti = get_raw_jwt()['jti']
 		#blacklist.add(jti)
 		#return jsonify(status="OK")
+	#TODO: just for testing
+	@custom_validator
+	def get(self):
+		resp = jsonify({'status': "OK"})
+		unset_jwt_cookies(resp)
+		return resp
 
 class LogoutUser2(Resource):
 	@jwt_refresh_token_required
@@ -753,6 +786,12 @@ class TokenRefresh(Resource):
 		resp = jsonify({"status":"OK"})
 		set_access_cookies(resp, access_token)
 		return resp
+
+class Default(Resource):
+	def get(self):
+		headers = {'content-Type':'text/html'}
+		return make_response(render_template('homepage.html'), headers)
+api.add_resource(Default, '/')
 api.add_resource(Homepage, '/homepage')
 api.add_resource(AddUser, '/adduser')
 api.add_resource(VerifyUser, '/verify')

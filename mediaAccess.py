@@ -19,6 +19,8 @@ def generateNewMediaID(): #will generate random integer ID while avoiding collis
 		randomkey = ''.join([random.choice(string.digits) for n in range(16)])
 		coun = session.execute(id_lookup_stmt, [randomkey])
 	return randomkey
+
+#TODO: queue this?
 class AddMedia(Resource):
 	@custom_validator
 	def post(self):
@@ -51,7 +53,11 @@ class GetMedia(Resource):
 		r = make_response(row.contents)
 		r.headers['Content-Type'] = row.contenttype
 		return r
-
+#remove a media file from the database based on a given ID
+#TODO: queue this somehow
+def removeMediaByID(media_id):
+	session = getCassandraSession()
+	session.execute("DELETE FROM images WHERE id = %s", [media_id])
 		
 #from project import custom_validator
 

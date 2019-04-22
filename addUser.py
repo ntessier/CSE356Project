@@ -8,7 +8,7 @@ import smtplib, ssl
 from mongoConnection import getMongoClient
 from mongoAccess import *
 #import logging
-
+from queueMail import queueMail 
 parser1 = reqparse.RequestParser()
 parser1.add_argument('email')
 parser1.add_argument('key')
@@ -19,7 +19,7 @@ class AddUser(Resource):
 	def post(self):
 		
 		#server = smtplib.SMTP('localhost', 587)
-		server = smtplib.SMTP('localhost')
+	#	server = smtplib.SMTP('localhost')
 		#server.ehlo()
 		#server.starttls(context = ssl.create_default_context())
 		#server.ehlo()
@@ -35,7 +35,7 @@ class AddUser(Resource):
 		myclient = getMongoClient()
 		mydb = myclient["Project"]
 		mycol = mydb["users"]
-		print("mycol: " + str(mycol))
+		#print("mycol: " + str(mycol))
 		myquery = {"email": email}
 		myquery2 = {"username": username}
 		row1 = mycol.find_one(myquery)
@@ -58,11 +58,10 @@ class AddUser(Resource):
 #			mycol.insert_one(dataToInsert)
 			upsertUser(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
-			msg = "\nHello " + username + "!\n Please click this link to\
-			verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
-			server.sendmail("ubuntu@projectinstance.cloud.compas.cs.stonybrook.edu", email, msg2)
-			print("SENT MAIL SUCCESSFULY\n")
-			server.quit()
+			#msg = "\nHello " + username + "!\n Please click this link to\
+			#verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
+			queueMail(email, msg2)
+			print("QUEUED MAIL SUCCESSFULY\n")
 			return jsonify(status="OK")
 		else:
 			return make_response(jsonify(status="error", error="Account already exists!"), 400)
@@ -86,7 +85,7 @@ class VerifyUser(Resource):
 		#row = mycol.find_one(myquery)
 		row = getUserByEmail(email)
 		if not row:
-			print("email not found")
+			print("email not found," + email)
 			return make_response(jsonify(status="error", error="Email not found!"), 400)
 		else:
 			if row['validated'] is False and row['verificationCode'] == key:
