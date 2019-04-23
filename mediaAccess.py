@@ -32,13 +32,13 @@ class AddMedia(Resource):
 		file = request.files['content']
 		filetype = file.content_type
 		file = file.read()
-		print('grabbed file')
+	#	print('grabbed file')
 		session = getCassandraSession()
-		print('grabbed session')
+	#	print('grabbed session')
 		id = generateNewMediaID()
-		print('generated ID')
+	#	print('generated ID')
 		session.execute("INSERT INTO images(id, contents, contenttype) VALUES (%s, %s, %s)", (id, file, filetype))
-		print("made it past inserting into database")
+	#	print("made it past inserting into database")
 		return jsonify(status="OK", id=id)
 class GetMedia(Resource):
 	def get(self, id):

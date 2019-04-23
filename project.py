@@ -46,6 +46,7 @@ def custom_validator(fn):
 		try:
 			verify_jwt_in_request()
 		except NoAuthorizationError:
+			print("NO VALID LOGIN")
 			return make_response(jsonify(status="error", error="Trying to access page that requires login"), 400)
 		return fn(*args, **kwargs)   
 	return wrapper
@@ -56,7 +57,7 @@ app.config['JWT_SECRET_KEY'] = 'SECRET'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
-app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
+app.config['JWT_TOKEN_LOCATION'] = ('headers', 'cookies')
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
 app.config['JWT_ACCESS_COOKIE_NAME'] = "access_token"
 app.config['JWT_REFRESH_COOKIE_NAME'] = "refresh_token"
@@ -72,11 +73,9 @@ class LoginUser(Resource):
 		mydb = myclient["Project"]
 		mycol = mydb["users"]
 		myquery = {"username": username}
-		print("Made it in this loginuser method")
 		row1 = getUserByName(username)
-		print("Made it past the row1 find_one(myquery)")
 		if not row1:
-			print("no login found")
+			print("no user found")
 			return make_response(jsonify(status="error"), 400)
 		else:
 			if row1['password'] == password and row1['validated'] is True:
@@ -89,7 +88,9 @@ class LoginUser(Resource):
 				upsertUser(row1)
 				#mycol.update_one(myquery, {"$set": {"access_token" : test_token} })
 				#mycol.update_one(myquery, {"$set": {"refresh_token" : refresh_token} })
+				print("Logged in successfully: ", row1['username'])
 				resp = jsonify({"status":"OK"})
+			
 				set_access_cookies(resp, access_token)
 				set_refresh_cookies(resp, refresh_token)
 				return resp
@@ -224,7 +225,7 @@ class GetQuestion(Resource):
 		questions = db["questions"]
 		col = db["visits"]
 		myquery2 = {"id" : id, "identifier": visit['identifier']}
-		print("QUESTION ID type: ", id)
+		#print("QUESTION ID type: ", id)
 		
 		my_question = getQuestionByID(id)
 		if not my_question:
@@ -240,7 +241,7 @@ class GetQuestion(Resource):
 			upsertQuestion(my_question)
 
 		my_question = json.loads(dumps(my_question))
-		print("Question Contents: ", my_question)
+		#print("Question Contents: ", my_question)
 		#my_question['id'] = my_question['id']
 		return jsonify(status="OK", question=my_question)
 
@@ -265,7 +266,7 @@ class GetQuestion(Resource):
 			
 		#delete the question
 		delete_response = delete_question(my_question)
-		print(delete_response)
+		#print(delete_response)
 		if delete_response['status'] == "error":
 			return make_response(jsonify(status="error", error="cannot delete question"),400)
 
@@ -284,7 +285,7 @@ def delete_question(my_question):
 	my_username = my_question['user']['username']
 	my_ansers = my_question["answers"]
 
-	print("DELETING FOR USER: ", my_username)
+	#print("DELETING FOR USER: ", my_username)
 	
 	# delete the reference held by "my_user"
 #	client = getMongoClient()
@@ -294,16 +295,16 @@ def delete_question(my_question):
 #	my_user = users.find_one(user_query)
 	my_user = getUserByName(my_username)
 	if not my_user:	#no valid user for this question
-		print("NO VALID USER HERE")
+		print("NO VALID USER in delete_question")
 		return_data = {}
 		return_data['status'] = "error"
 		return return_data
-	print(my_user)
-	print(my_user['reputation'])
+	#print(my_user)
+	#print(my_user['reputation'])
 	questions_by_user = my_user['questions']
 
-	print("Question ID to Remove: ", my_question['id'])
-	print("Questions Owned by This User: ", questions_by_user)
+	#print("Question ID to Remove: ", my_question['id'])
+	#print("Questions Owned by This User: ", questions_by_user)
 	questions_by_user.remove(my_question['id'])
 	my_user['questions'] = questions_by_user
 	
@@ -326,7 +327,7 @@ def delete_question(my_question):
 #		delete_answer(answer)
 	return_data = {}
 	return_data['status']="OK"
-	print("RETURN DATA: ", return_data)
+	#print("RETURN DATA: ", return_data)
 	return return_data
 	#PART3: remove associate reputation	
 #delete an answer
@@ -425,7 +426,7 @@ class AddAnswer(Resource):
 		dToInsert['is_accepted'] = False
 		dToInsert['timestamp'] = time.time()
 		dToInsert['media'] = media
-		print(dumps(dToInsert))
+		#print(dumps(dToInsert))
 		#REFACTOR new entry in 'answers'
 		#col.insert_one(dToInsert)
 		upsertAnswer(dToInsert)

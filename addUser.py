@@ -5,6 +5,7 @@ import json
 import random
 import string
 import smtplib, ssl
+import time
 from mongoConnection import getMongoClient
 from mongoAccess import *
 #import logging
@@ -24,13 +25,13 @@ class AddUser(Resource):
 		#server.starttls(context = ssl.create_default_context())
 		#server.ehlo()
 		#server.login("warmupproject2@gmail.com", "dummyemail")
-
+		#start_time = time.time()
 
 		args = parser1.parse_args()
 		username = args['username']
 		password = args['password']
 		email = args['email']
-		print("username: " + username + " password: " + password + " email: " + email)
+		#print("username: " + username + " password: " + password + " email: " + email)
 
 		myclient = getMongoClient()
 		mydb = myclient["Project"]
@@ -40,8 +41,10 @@ class AddUser(Resource):
 		myquery2 = {"username": username}
 		row1 = mycol.find_one(myquery)
 		row2 = mycol.find_one(myquery2)
-
+		
+				
 		if not row1 and not row2:
+			#start_time = time.time()
 			dataToInsert = {}
 			dataToInsert['username'] = username
 			dataToInsert['password'] = password
@@ -54,17 +57,22 @@ class AddUser(Resource):
 			dataToInsert['upvoted'] = []
 			dataToInsert['downvoted'] = []
 			dataToInsert['waived_downvoted'] = []
+			#end_time = time.time()
 			#REFACTOR new entry in 'user'
 #			mycol.insert_one(dataToInsert)
 			upsertUser(dataToInsert)
+#			upsertUserNOW(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			#msg = "\nHello " + username + "!\n Please click this link to\
 			#verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
 			queueMail(email, msg2)
-			print("QUEUED MAIL SUCCESSFULY\n")
+			#print("QUEUED MAIL SUCCESSFULY\n")
+			#end_time = time.time()
+			#print(end_time - start_time)
+			print("NEW USER ADDED", username)
 			return jsonify(status="OK")
 		else:
-			return make_response(jsonify(status="error", error="Account already exists!"), 400)
+			return make_response(jsonify(status="error", error="Account already exists!"), 401)
 	def get(self):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('adduser.html'), headers)
@@ -73,9 +81,10 @@ class VerifyUser(Resource):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('verify.html'), headers)
 	def post(self):
+		print("VALIDATION ATTEMPT")
 		if request.is_json:
 			json = request.get_json()
-
+		
 		email = json['email']
 		key = json['key']
 		#myclient = getMongoClient()
@@ -84,19 +93,26 @@ class VerifyUser(Resource):
 		#myquery = {"email" : email}
 		#row = mycol.find_one(myquery)
 		row = getUserByEmail(email)
+		tries = 0
+		max_tries = 10
+		while not row and tries < max_tries:
+			#print("email not found, trying again " + email)
+			tries += 1
+			time.sleep(.5)
+			row = getUserByEmail(email)
 		if not row:
-			print("email not found," + email)
-			return make_response(jsonify(status="error", error="Email not found!"), 400)
+			print("Failed after many tries, " + email)
+			return make_response(jsonify(status="error", error="Email not found!"), 401)
 		else:
 			if row['validated'] is False and row['verificationCode'] == key:
-				print("\n VALIDATED WITH CODE")
+				print("\n VALIDATED WITH CODE ", row['username'])
 				#REFACTOR update 'validated' in 'user'
 				#mycol.update_one(myquery, { "$set": { "validated" : True} })
 				row['validated'] = True
 				upsertUser(row)
 				return jsonify(status="OK")
 			elif row['validated'] is False and key == 'abracadabra':
-				print("\n VALIDATED SUCCESSFULLY WITH BACKDOOR")
+				print("\n VALIDATED SUCCESSFULLY WITH BACKDOOR ",row['username'] )
 				#REFACTOR update 'validated' in 'user'
 				#mycol.update_one(myquery, { "$set": { "validated" : True} })
 				row['validated'] = True
@@ -104,8 +120,8 @@ class VerifyUser(Resource):
 
 				return jsonify(status="OK")
 			else:
-				print("\nVALIDATION ERROR")
-				return make_response(jsonify(status="error", error="VerificationCode doesn't match or user is already validated!"), 400)
+				#print("\nVALIDATION ERROR")
+				return make_response(jsonify(status="error", error="VerificationCode doesn't match or user is already validated!"), 402)
 
 			
 

@@ -22,8 +22,8 @@ def upsertQuestion(my_question):
 #	question_col.replace_one({"id" : my_question['id']}, my_question, upsert=True)
 
 	queueWrite('questions', my_question)
-	print("inserted a question")
-	print(my_question)
+	#print("inserted a question")
+	print('queued question: ' + my_question)
 
 #Get Answer by ID
 #return the Answer document, None if no answer exists
@@ -66,6 +66,7 @@ def getUserByName(my_name):
 	return my_user
 
 #Write user
+
 def upsertUser(my_user):
 #	client = getMongoClient()
 #	db = client["Project"]
@@ -73,3 +74,9 @@ def upsertUser(my_user):
 #	user_col.replace_one({'username': my_user["username"]}, my_user, upsert=True)
 
 	queueWrite('users', my_user)
+
+def upsertUserNOW(my_user):
+	client = getMongoClient()
+	db = client["Project"]
+	user_col = db["users"]
+	user_col.replace_one({'username': my_user["username"]}, my_user, upsert=True)
