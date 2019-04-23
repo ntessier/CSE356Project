@@ -787,7 +787,11 @@ class TokenRefresh(Resource):
 		resp = jsonify({"status":"OK"})
 		set_access_cookies(resp, access_token)
 		return resp
-
+class Reset(Resource):
+	def get(self):
+		client = getMongoClient()
+		mydb = client['Project']
+		mydb.command("dropDatabase")
 class Default(Resource):
 	def get(self):
 		headers = {'content-Type':'text/html'}
@@ -813,6 +817,7 @@ api.add_resource(AcceptAnswer, '/answers/<id>/accept')
 api.add_resource(SearchQuestion, '/search')
 api.add_resource(AddMedia, '/addmedia')
 api.add_resource(GetMedia, '/media/<id>')
+api.add_resource(Reset, '/reset')
 api.add_resource(ViewQuestion, '/view/questions/<id>')
 if __name__ == '__main__':
     app.run(host = '0.0.0.0', debug=True)

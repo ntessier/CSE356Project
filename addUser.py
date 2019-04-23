@@ -64,7 +64,8 @@ class AddUser(Resource):
 #			upsertUserNOW(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			#msg = "\nHello " + username + "!\n Please click this link to\
-			#verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
+			print('right above queueMail in addUser')			
+#verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
 			queueMail(email, msg2)
 			#print("QUEUED MAIL SUCCESSFULY\n")
 			#end_time = time.time()
@@ -84,7 +85,9 @@ class VerifyUser(Resource):
 		print("VALIDATION ATTEMPT")
 		if request.is_json:
 			json = request.get_json()
-		
+		else:
+			print("Not json")
+			return make_response(jsonify(status = "error", error = "not json"))	
 		email = json['email']
 		key = json['key']
 		#myclient = getMongoClient()
