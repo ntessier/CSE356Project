@@ -112,14 +112,14 @@ class VerifyUser(Resource):
 				#REFACTOR update 'validated' in 'user'
 				#mycol.update_one(myquery, { "$set": { "validated" : True} })
 				row['validated'] = True
-				upsertUser(row)
+				upsertUserNOW(row)
 				return jsonify(status="OK")
 			elif row['validated'] is False and key == 'abracadabra':
 				print("\n VALIDATED SUCCESSFULLY WITH BACKDOOR ",row['username'] )
 				#REFACTOR update 'validated' in 'user'
 				#mycol.update_one(myquery, { "$set": { "validated" : True} })
 				row['validated'] = True
-				upsertUser(row)
+				upsertUserNOW(row)
 
 				return jsonify(status="OK")
 			else:

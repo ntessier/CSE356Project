@@ -44,6 +44,7 @@ def custom_validator(fn):
 	@wraps(fn)
 	def wrapper(*args, **kwargs):
 		try:
+			#print(request.headers)
 			verify_jwt_in_request()
 		except NoAuthorizationError:
 			print("NO VALID LOGIN")
@@ -57,7 +58,7 @@ app.config['JWT_SECRET_KEY'] = 'SECRET'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)
 app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
-app.config['JWT_TOKEN_LOCATION'] = ('headers', 'cookies')
+app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
 app.config['JWT_ACCESS_COOKIE_NAME'] = "access_token"
 app.config['JWT_REFRESH_COOKIE_NAME'] = "refresh_token"
@@ -69,11 +70,12 @@ class LoginUser(Resource):
 		args = parser2.parse_args()
 		username = args['username']
 		password = args['password']
-		myclient = getMongoClient()
-		mydb = myclient["Project"]
-		mycol = mydb["users"]
-		myquery = {"username": username}
+		#myclient = getMongoClient()
+		#mydb = myclient["Project"]
+		#mycol = mydb["users"]
+		#myquery = {"username": username}
 		row1 = getUserByName(username)
+		print("Attmepted Login: ", username)
 		if not row1:
 			print("no user found")
 			return make_response(jsonify(status="error"), 400)
@@ -92,7 +94,7 @@ class LoginUser(Resource):
 				resp = jsonify({"status":"OK"})
 			
 				set_access_cookies(resp, access_token)
-				set_refresh_cookies(resp, refresh_token)
+#				set_refresh_cookies(resp, refresh_token)
 				return resp
 			else:
 				return make_response(jsonify(status="error"), 400)
@@ -151,6 +153,7 @@ class GetUserAnswers(Resource):
 class AddQuestion(Resource):
 	@custom_validator
 	def post(self):
+		#print(request.headers)
 		if request.is_json:
 			json = request.get_json()
 			#print("JSON upon entering AddQuestion: " + dumps(json))
@@ -167,6 +170,8 @@ class AddQuestion(Resource):
 			print("Missing tags")
 			#json['tags'] = []
 			return make_response(jsonify(status="error", error="Missing parameter: tags"), 400)	
+
+		print("Identity: ", get_jwt_identity())
 		media = []
 		if "media" in json:
 			media = json['media'] 
@@ -189,6 +194,12 @@ class AddQuestion(Resource):
 		dToInsert['accepted_answer_id'] = None
 		dToInsert['id'] = generateNewID() 
 		dToInsert['answers'] = []	#empty array of answer IDs
+		
+		#TODO: update the 'used' field of media
+		#for media_id in media:
+		#	associateMedia(media_id)	
+
+		
 		#print(dumps(dToInsert))
 		#REFACTOR add entry in 'question'
 		#col.insert_one(dToInsert)
@@ -248,10 +259,10 @@ class GetQuestion(Resource):
 	@custom_validator
 	def delete(self, id):
 		#find the question
-#		client = getMongoClient()
-#		db = client["Project"]
-#		questions = db['questions']
-#		id_query = {"id": id}
+		client = getMongoClient()
+		db = client["Project"]
+		questions = db['questions']
+		id_query = {"id": id}
 
 		my_question = getQuestionByID(id)
 		if not my_question:
@@ -322,9 +333,9 @@ def delete_question(my_question):
 	upsertUser(my_user)
 
 	#delete all answers (Do we need to?)
-	#for answer in my_question['answers']:
+	for answer in my_question['answers']:
 #		# obviously inefficient, waiting on every delete. Use message passing?
-#		delete_answer(answer)
+		delete_answer(answer)
 	return_data = {}
 	return_data['status']="OK"
 	#print("RETURN DATA: ", return_data)
@@ -334,9 +345,9 @@ def delete_question(my_question):
 #@param an answer ID
 #@return nothing
 def delete_answer(answer_id):
-#	client = getMongoClient()
-#	db = client["Project"]
-#	answers = db['answers']
+	client = getMongoClient()
+	db = client["Project"]
+	answers = db['answers']
 #	answer_query = {'id' : answer_id}
 	#my_answer = answers.find_one(answer_query)
 	my_answer = getAnswerByID(answer_id)
@@ -355,9 +366,18 @@ def delete_answer(answer_id):
 	answers_by_user = my_user['answers']
 	answers_by_user.remove(my_answer['id'])
 	my_user['answers'] = answers_by_user
+	my_user['reputation'] -= my_answer['score']
+	if my_user['reputation'] < 2:
+		my_user['reputation'] = 1
+
+	#TODO: delete associated media
+	for media_id in my_answer['media']:
+		removeMediaByID(media_id)
 	#REFACTOR update 'answers' in 'user'
 #	users.update_one(user_query, {"$set": {"answers": answers_by_user}})
 	upsertUser(my_user)
+	answers.delete_one({'id': answer_id})
+	
 
 class UpvoteQuestion(Resource):
 	@custom_validator
@@ -426,6 +446,11 @@ class AddAnswer(Resource):
 		dToInsert['is_accepted'] = False
 		dToInsert['timestamp'] = time.time()
 		dToInsert['media'] = media
+
+		#TODO: update the 'used' field of media
+		#for media_id in media:
+		#	associateMedia(media_id)	
+
 		#print(dumps(dToInsert))
 		#REFACTOR new entry in 'answers'
 		#col.insert_one(dToInsert)

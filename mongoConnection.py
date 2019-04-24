@@ -1,5 +1,9 @@
+import pymongo
+myclient = None
 def getMongoClient():
-        import pymongo
-        myclient = pymongo.MongoClient("mongodb://192.168.122.10:27017/")
-       	return myclient
+	global myclient
+	if not myclient:
+		myclient = pymongo.MongoClient("mongodb://192.168.122.10:27017/")
+	return myclient
+	
 

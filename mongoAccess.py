@@ -23,7 +23,7 @@ def upsertQuestion(my_question):
 
 #	queueWrite('questions', my_question)
 	#print("inserted a question")
-	print('queued question: ' + my_question)
+	#print('queued question: ' + my_question)
 
 #Get Answer by ID
 #return the Answer document, None if no answer exists

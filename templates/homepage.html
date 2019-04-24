@@ -46,10 +46,12 @@ function addQuestion()
 	title = form.get("title");
 	tags = form.get("tags");
 	tags = tags.split(',');
+	media = form.get("media");
+	media = media.split(',');
 	xhr.open("POST", '/questions/add', true);
 	xhr.responseType = 'json';
 	xhr.setRequestHeader("Content-Type", "application/json");
-	xhr.send(JSON.stringify({"body" : body, "title" : title, "tags" : tags}));
+	xhr.send(JSON.stringify({"body" : body, "title" : title, "tags" : tags, "media":media}));
 	
 
 	xhr.onreadystatechange = function() {
@@ -83,6 +85,8 @@ Post a new Question!
 	 <textarea rows = "5" cols = "50" name = "body" placeholder ="Question goes here"></textarea>
 	<br>Tags:<br>
 	<textarea rows = "1" cols = "50" name = "tags" placeholder ="write,tags,like,this,tag one,tag two,tag three"></textarea>
+	<br>Media:<br>
+	<textarea row = "1" cols = "50" name = "media" placeholder = "media id"></textarea>
 <input type = "submit" value = "Submit">
 
 </body>
