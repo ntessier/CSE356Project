@@ -78,6 +78,8 @@ class AddMedia(Resource):
 		print("QUEUING A CASSANDRA WRITE")
 		if file is None:
 			return make_response(jsonify(status="error", error="No file attached!"), 400)
+		if filetype is None:
+			return make_response(jsonify(status="error", error="No filetype!"), 400)
 		id = generateNewMediaID()
 		queueCassandraWrite(id, file, filetype)
 
