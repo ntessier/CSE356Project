@@ -53,7 +53,7 @@ def custom_validator(fn):
 			return make_response(jsonify(status="error", error="Trying to access page that requires login"), 400)
 		return fn(*args, **kwargs)   
 	return wrapper
-from mediaAccess import GetMedia, AddMedia
+from mediaAccess import GetMedia, AddMedia, removeMediaByID
 
 app.config['MONGO_URI'] = os.environ.get('DB')
 app.config['JWT_SECRET_KEY'] = 'SECRET'
@@ -338,7 +338,10 @@ def delete_question(my_question):
 	#remove associated media from the database
 	for media_id in my_question['media']:
 		#remove from cassandra based on ID
-		removeMediaByID(media_id)
+		result = removeMediaByID(media_id)
+		if result == "error":
+			print("tried to delete invalid media")
+			return make_response(jsonify(status="error", error="invalid media"), 400)
 
 #	users.update_one(user_query, {"$set": {"questions": questions_by_user}})
 	upsertUser(my_user)

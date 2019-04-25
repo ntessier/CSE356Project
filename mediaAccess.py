@@ -116,12 +116,18 @@ class GetMedia(Resource):
 #remove a media file from the database based on a given ID
 #TODO: queue this somehow
 def removeMediaByID(media_id):
-	session = getCassandraSession()
-	session.execute("DELETE FROM images WHERE id = %s", [media_id])
-	
+
+		
 	client = getMongoConnection()		
 	db = client["Project"]
 	col = db["media"]
+	my_media = col.find({"media_id": media_id})
+	if not my_media:
+		return "error"
+
 	col.delete_one({"media_id": media_id})
+	session = getCassandraSession()
+	session.execute("DELETE FROM images WHERE id = %s", [media_id])
+	return "OK"
 #from project import custom_validator
 
