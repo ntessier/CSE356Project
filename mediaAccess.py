@@ -23,12 +23,12 @@ def generateNewMediaID(): #will generate random integer ID while avoiding collis
 
 #TODO: queue this?
 class AddMedia(Resource):
-	def get(self):
-		headers = {'Content-Type' : 'text/html'}
-		return make_response(render_template('addmedia.html'), headers)
-	
 	@custom_validator
 	def post(self):
+		#print(request.headers)
+		#for cookie in request.cookies:
+		#	print("COOKIE FOUND FOR MEDIA: ", cookie)
+		print("MADE IT INTO ADDMEDIA")
 		#if request.is_json:
 		#	json = request.get_json()
 		#else:
@@ -47,7 +47,11 @@ class AddMedia(Resource):
 		queueCassandraWrite(id, file, filetype)
 		#session.execute("INSERT INTO images(id, contents, contenttype) VALUES (%s, %s, %s)", (id, file, filetype))
 	#	print("made it past inserting into database")
+		
 		return jsonify(status="OK", id=id)
+	def get(self):
+		headers = {'Content-Type' : 'text/html'}
+		return make_response(render_template('addmedia.html'), headers)
 
 class GetMedia(Resource):
 	def get(self, id):

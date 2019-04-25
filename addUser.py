@@ -31,6 +31,10 @@ class AddUser(Resource):
 		username = args['username']
 		password = args['password']
 		email = args['email']
+
+		print("Adding a user ", username)
+		print("With email ", email) 
+
 		#print("username: " + username + " password: " + password + " email: " + email)
 
 		myclient = getMongoClient()
@@ -82,12 +86,12 @@ class VerifyUser(Resource):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('verify.html'), headers)
 	def post(self):
-		print("VALIDATION ATTEMPT")
+		#print("VALIDATION ATTEMPT")
 		if request.is_json:
 			json = request.get_json()
 		else:
 			print("Not json")
-			return make_response(jsonify(status = "error", error = "not json"))	
+			return make_response(jsonify(status = "error", error = "not json"), 400)	
 		email = json['email']
 		key = json['key']
 		#myclient = getMongoClient()
@@ -101,12 +105,13 @@ class VerifyUser(Resource):
 		while not row and tries < max_tries:
 			#print("email not found, trying again " + email)
 			tries += 1
-			time.sleep(.5)
+			#time.sleep(.5)
 			row = getUserByEmail(email)
 		if not row:
 			print("Failed after many tries, " + email)
 			return make_response(jsonify(status="error", error="Email not found!"), 401)
 		else:
+			print("FOUND USER WHILE VERIFYING: ", row['username'])
 			if row['validated'] is False and row['verificationCode'] == key:
 				print("\n VALIDATED WITH CODE ", row['username'])
 				#REFACTOR update 'validated' in 'user'

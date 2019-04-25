@@ -44,10 +44,12 @@ def custom_validator(fn):
 	@wraps(fn)
 	def wrapper(*args, **kwargs):
 		try:
-			#print(request.headers)
 			verify_jwt_in_request()
 		except NoAuthorizationError:
-			print("NO VALID LOGIN")
+			print("INVALID LOGIN")
+			#print(request.headers)
+			#for cookie in request.cookies:
+			#	print("COOKIE FOUND: ", cookie)
 			return make_response(jsonify(status="error", error="Trying to access page that requires login"), 400)
 		return fn(*args, **kwargs)   
 	return wrapper
@@ -154,6 +156,9 @@ class AddQuestion(Resource):
 	@custom_validator
 	def post(self):
 		#print(request.headers)
+		#for cookie in request.cookies:
+		#	print("COOKIE FOUND: ", cookie)
+		#print(request.headers)
 		if request.is_json:
 			json = request.get_json()
 			#print("JSON upon entering AddQuestion: " + dumps(json))
@@ -171,7 +176,7 @@ class AddQuestion(Resource):
 			#json['tags'] = []
 			return make_response(jsonify(status="error", error="Missing parameter: tags"), 400)	
 
-		print("Identity: ", get_jwt_identity())
+		#print("Identity: ", get_jwt_identity())
 		media = []
 		if "media" in json:
 			media = json['media'] 
@@ -422,6 +427,13 @@ class AddAnswer(Resource):
 	#	error: message string (if error)
 	@custom_validator
 	def post(self, id):
+		
+		question = getQuestionByID(id)
+		if not question:
+			return make_response(jsonify(status="error", error="no question with given ID"), 400)
+
+
+				
 		if request.is_json:
 			json = request.get_json()
 		else:
@@ -446,7 +458,7 @@ class AddAnswer(Resource):
 		dToInsert['is_accepted'] = False
 		dToInsert['timestamp'] = time.time()
 		dToInsert['media'] = media
-
+		dToInsert['question'] = id
 		#TODO: update the 'used' field of media
 		#for media_id in media:
 		#	associateMedia(media_id)	
@@ -460,11 +472,6 @@ class AddAnswer(Resource):
 		#questions = db["questions"]
 		#myquery = {'id' : id}
 		#question = questions.find_one(myquery)
-		question = getQuestionByID(id)
-		
-		if not question:
-			return make_response(jsonify(status="error", error="no question with given ID"), 400)
-
 		question['answers'].append(answer_id)
 		question['answer_count'] = question['answer_count']+1
 		#REFACTOR update 'answers' in 'questions'
@@ -639,23 +646,38 @@ def downvote_object(voter, obj, obj_owner):
 class AcceptAnswer(Resource):
 	@custom_validator
 	def accept_answer(self, id):
+		
+		answer = getAnswerByID(id)
+		question = getQuestionByID(answer['question'])
 		current_user = getUserByName(get_jwt_identity())
-		for questionID in current_user['questions']:
-			question = getQuestionByID(questionID)
-			for answerID in question['answers']:
-				if answerID == id:
-					question['accepted_answer_id'] = id
-					upsertQuestion(question)
-					answer = getAnswerByID(id)
-					answer['is_accepted'] = True
-					userWithAnswer = getUserByName(answer['user'])
-					userWithAnswer['reputation'] = userWithAnswer['reputation'] + 15
-					upsertQuestion(question)
-					upsertAnswer(answer)
-					upsertUser(userWithAnswer)
-					return jsonify(status="OK")
 
-		return make_response(jsonify(status="error", message = "answer ID may not be users answer or answer ID doesn't exst"), 400)
+		#check for correct user
+		if not question['id'] in current_user['questions']:
+			return make_response(jsonify(status="error", error="Only the original poster can accept an answer"), 401)
+
+		#check for question already closed
+		if not question['accepted_answer_id']:
+			return make_response(jsonify(status="error", error="Question has been closed"), 402)
+
+		#for questionID in current_user['questions']:
+		#	for answerID in question['answers']:
+		#		if answerID == id:
+		
+		#close the question
+		question['accepted_answer_id'] = id
+		upsertQuestion(question)
+		
+		#update the answer
+		answer['is_accepted'] = True
+		upsertAnswer(answer)
+
+		#increase answerer reputation
+		userWithAnswer = getUserByName(answer['user'])
+		userWithAnswer['reputation'] = userWithAnswer['reputation'] + 15
+		upsertUser(userWithAnswer)
+		return jsonify(status="OK")
+
+		#return make_response(jsonify(status="error", message = "answer ID may not be users answer or answer ID doesn't exst"), 400)
 		
 
 
