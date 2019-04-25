@@ -186,12 +186,13 @@ class AddQuestion(Resource):
 #		client = getMongoClient()
 #		db = client["Project"]
 #		col = db["questions"]
+		user = getUserByName(get_jwt_identity())
 		dToInsert = {}
 		dToInsert['title'] = title
 		dToInsert['body'] = body
 		dToInsert['tags'] = tags
-		dToInsert['user'] = {'username': get_jwt_identity(), 'reputation': 1}
-		dToInsert['score'] = 1
+		dToInsert['user'] = {'username': user['username'], 'reputation': user['reputation']}
+		dToInsert['score'] = 0
 		dToInsert['view_count'] = 0
 		dToInsert['answer_count'] = 0
 		dToInsert['timestamp'] = time.time() #time.time() should be a unix timestamp
@@ -200,11 +201,14 @@ class AddQuestion(Resource):
 		dToInsert['id'] = generateNewID() 
 		dToInsert['answers'] = []	#empty array of answer IDs
 		
-		#TODO: update the 'used' field of media
-		#for media_id in media:
-		#	associateMedia(media_id)	
-
-		
+		#update the 'used' field of media
+		for media_id in media:
+			#create a document that maps a mediaID to an ObjectID
+			#associateMedia(media_id, dToInsert['id'])	
+			result = associateMedia(media_id, dToInsert['id'], get_jwt_identity())
+			if result == "error":
+				return make_response(jsonify(status="error", error="media already associated with another object"), 400)
+			
 		#print(dumps(dToInsert))
 		#REFACTOR add entry in 'question'
 		#col.insert_one(dToInsert)
@@ -246,7 +250,9 @@ class GetQuestion(Resource):
 		my_question = getQuestionByID(id)
 		if not my_question:
 			return make_response(jsonify(status="error", error="No existing question ID"), 400)
-		
+		user = my_question['user']['username']
+		user = getUserByName(user)
+		my_question['user']['reputation'] = user['reputation'] #MIGHT NEED TO UPSERT THIS IF DOESN"T WORK BUT TRYING TO AVOID UPSERT OPERATION
 		if col.count(myquery2) == 0: #unique visit!
 			visit['id'] = id
 			#REFACTOR new entry in 'visit'
@@ -254,8 +260,8 @@ class GetQuestion(Resource):
 			my_question['view_count'] = my_question['view_count'] + 1
 			#REFACTOR update 'view_count' in questions
 			#questions.update_one(myquery, { "$set": { "view_count" : my_question['view_count']} } )
-			upsertQuestion(my_question)
-
+			#upsertQuestion(my_question)
+		upsertQuestion(my_question)
 		my_question = json.loads(dumps(my_question))
 		#print("Question Contents: ", my_question)
 		#my_question['id'] = my_question['id']
@@ -386,31 +392,37 @@ def delete_answer(answer_id):
 
 class UpvoteQuestion(Resource):
 	@custom_validator
-	def upvote_question(self, id):
-		if request.is_json():
+	def post(self, id):
+		if request.is_json:
 			my_json = request.get_json()
 		else:
 			return make_response(jsonify(status="error", error="Request isn't json"), 400)
 		vote = None	#true if upvote, false if downvote
 		if 'upvote' in my_json:
 			vote = my_json['upvote']
-		if not vote:
-			return make_response(jsonify(status="error", error="Invalid arguments: upvote not found"), 400)
+		else:
+			vote = True
+		#if not vote:
+		#	return make_response(jsonify(status="error", error="Invalid arguments: upvote not found"), 400)
 
 		my_question = getQuestionByID(id)
+		print("vote = " + str(vote))
+		print("question by ID of " + id + " is " + str(my_question))
 		my_question_id = my_question['id']
 		if not my_question:
 			return make_response(jsonify(status="error", error="No question with given ID"), 400)
-		my_user = getUserByName(my_answer['user'])
+		my_user = getUserByName(my_question['user']['username'])
 		if not my_user:
 			return make_response(jsonify(status="error", error="No corresponding poster???"), 400)
 
 		voting_user = getUserByName(get_jwt_identity())
-
+		print("voting_user is " + voting_user['username'])
 		#TODO: call vote functions
-		if vote:
+		if vote == True:
+			print("about to upvote")
 			upvote_object(voting_user, my_question, my_user)
 		else:
+			print("about to downvote")
 			downvote_object(voting_user, my_question, my_user)
 		return jsonify(status = "OK")
 
@@ -454,14 +466,18 @@ class AddAnswer(Resource):
 		dToInsert['id'] = answer_id
 		dToInsert['user'] = get_jwt_identity()	
 		dToInsert['body'] = body
-		dToInsert['score'] = 1
+		dToInsert['score'] = 0
 		dToInsert['is_accepted'] = False
 		dToInsert['timestamp'] = time.time()
 		dToInsert['media'] = media
 		dToInsert['question'] = id
-		#TODO: update the 'used' field of media
-		#for media_id in media:
-		#	associateMedia(media_id)	
+		#update the 'used' field of media
+		for media_id in media:
+                        #create a document that maps a mediaID to an ObjectID
+			result = associateMedia(media_id, dToInsert['id'], get_jwt_identity())
+			if result == "error":
+				return make_response(jsonify(status="error", error="media already associated with another object"), 400)
+				
 
 		#print(dumps(dToInsert))
 		#REFACTOR new entry in 'answers'
@@ -524,16 +540,18 @@ class GetAnswers(Resource):
 
 class UpvoteAnswer(Resource):
 	@custom_validator
-	def upvote_answer(self, id):
-		if request.is_json():
+	def post(self, id):
+		if request.is_json:
 			my_json = request.get_json()
 		else:
 			return jsonify(status="error", error="Request isn't json")
 		vote = None	#true if upvote, false if downvote
 		if 'upvote' in my_json:
 			vote = my_json['upvote']
-		if not vote:
-			return make_response(jsonify(status="error", error="Invalid arguments: upvote not found"), 400)
+		else:
+			vote = True
+		#if not vote:
+		#	return make_response(jsonify(status="error", error="Invalid arguments: upvote not found"), 400)
 
 		my_answer = getAnswerByID(id)
 		my_answer_id = my_answer['id']
@@ -546,7 +564,7 @@ class UpvoteAnswer(Resource):
 		voting_user = getUserByName(get_jwt_identity())
 
 		#TODO: call vote functions
-		if vote:
+		if vote == True:
 			upvote_object(voting_user, my_answer, my_user)
 		else:
 			downvote_object(voting_user, my_answer, my_user)
@@ -558,37 +576,62 @@ class UpvoteAnswer(Resource):
 #responsible for updating everything about the jsons, and reporting to appropriate "write" calls
 def upvote_object(voter, obj, obj_owner):
 	my_id = obj['id']
+	#print(voter)
+	
+	client = getMongoClient()
+	db = client['Project']
+	col = db['users']
 
 	#remove downvote
 	if my_id in voter['waived_downvoted']:
+		print("Removing waived downvote")
 		obj['score'] += 1
 		voter['waived_downvoted'].remove(my_id)
+		#col.update_one({"username":voter['username']}, {"$pull":{"waived_downvoted":my_id}})
 	elif obj['id'] in voter['downvoted']:
+		print("Removing normal downvote")
 		obj['score'] += 1
 		voter['downvoted'].remove(my_id)
+		#col.update_one({"username":voter['username']}, {"$pull":{"downvoted":my_id}})
 		obj_owner['reputation'] += 1
-
+		#obj['user']['reputation'] = obj_owner['reputation']
 	#unupvote
 	if obj['id'] in voter['upvoted']:
 		obj['score'] -= 1
+		print("removing upvote")
 		voter['upvoted'].remove(obj['id'])
-		if obj_owner['reputation'] > 2:
+		#col.update_one({"username":voter['username']}, {"$pull":{"upvoted":my_id}})
+		if obj_owner['reputation'] >= 2:
 			obj_owner['reputation'] -= 1
+		#	obj['user']['reputation'] = obj_owner['reputation'] 
 		#TODO: consider waiving removal for low rep user?
-		
-	
 	#upvote	
 	else:
+		print('name of voter is ' + voter['username'])
+		print("NORMAL UPVOTE")
 		#increment owner rep. increment object score. add to "upvoted" list
 		obj['score'] += 1
 		obj_owner['reputation'] += 1
+		#obj['user']['reputation'] = obj_owner['reputation']
 		voter['upvoted'].append(obj['id'])
+		print('Voters upvoted array after appending id ' + str(voter['upvoted']))
+		#col.update_one({"username":voter['username']}, {"$push":{"upvoted":my_id}})	
 	
-	upsertUser(voter) 
-	upsertUser(obj_owner)
-	if 'is_accpted' in obj:
+	#print(voter)
+	if voter['username'] == obj_owner['username']:
+		voter['reputation'] = obj_owner['reputation']
+		upsertUser(voter)
+	else:
+		upsertUser(voter)
+		upsertUser(obj_owner)
+	print("USERNAME OF VOTER: ", voter["username"])
+	#col.update_one({"username":voter['username']}, {"$set":{"upvoted":voter['upvoted']}})
+	#col.update_one({"username":voter['username']}, {"$set":{"downvoted":voter['downvoted']}})
+	#col.update_one({"username":voter['username']}, {"$set":{"waived_downvoted":voter['waived_downvoted']}})
+	if 'is_accepted' in obj:
 		upsertAnswer(obj)
 	else:
+		obj['user']['reputation'] = obj_owner['reputation']
 		upsertQuestion(obj)
 
 
@@ -597,13 +640,14 @@ def upvote_object(voter, obj, obj_owner):
 def downvote_object(voter, obj, obj_owner):
 	owner_changed = False
 	my_id = obj['id']
-	
 	#remove upvote
 	if my_id in voter['upvoted']:
+		print("decrementing for upvote removal")
 		obj['score'] -= 1
 		voter['upvoted'].remove(my_id)
 		if obj_owner['reputation'] >= 2:
 			obj_owner['reputation'] -= 1
+			#obj['user']['reputation'] -= 1
 			owner_changed = True
 			
 	
@@ -619,10 +663,12 @@ def downvote_object(voter, obj, obj_owner):
 		obj['score'] += 1
 		voter['downvoted'].remove(obj['id'])
 		obj_owner['reputation'] += 1
+		#obj['user']['reputation'] += 1
 		owner_changed = True
 
 	#downvote	
 	else:
+		print("DECREMENTING SCORE FOR DV")
 		obj['score'] -= 1
 		if obj_owner['reputation'] < 2:
 			#do nothing to rep. add to "waived" list
@@ -631,21 +677,27 @@ def downvote_object(voter, obj, obj_owner):
 		else:
 			#decrement rep. add to "downvoted" list
 			obj_owner['reputation'] -= 1
+			#obj['user']['reputation'] = obj_owner['reputation']
 			voter['downvoted'].append(obj['id'])
 			owner_changed = True
 
 
-	upsertUser(voter) 
-	if owner_changed:
+#	upsertUser(voter) 
+	if owner_changed and voter['username'] == obj_owner['username']:
+		voter['reputation'] = obj_owner['reputation']
+		upsertUser(voter)
+	else:
 		upsertUser(obj_owner)
-	if 'is_accpted' in obj:
+		upsertUser(voter)
+	if 'is_accepted' in obj:
 		upsertAnswer(obj)
 	else:
+		obj['user']['reputation'] = obj_owner['reputation']
 		upsertQuestion(obj)
 	
 class AcceptAnswer(Resource):
 	@custom_validator
-	def accept_answer(self, id):
+	def post(self, id):
 		
 		answer = getAnswerByID(id)
 		question = getQuestionByID(answer['question'])
@@ -653,11 +705,11 @@ class AcceptAnswer(Resource):
 
 		#check for correct user
 		if not question['id'] in current_user['questions']:
-			return make_response(jsonify(status="error", error="Only the original poster can accept an answer"), 401)
+			return make_response(jsonify(status="error", error="Only the original poster can accept an answer"), 400)
 
 		#check for question already closed
-		if not question['accepted_answer_id']:
-			return make_response(jsonify(status="error", error="Question has been closed"), 402)
+		if question['accepted_answer_id'] is not None:
+			return make_response(jsonify(status="error", error="Question has been closed"), 400)
 
 		#for questionID in current_user['questions']:
 		#	for answerID in question['answers']:
@@ -727,7 +779,7 @@ class SearchQuestion(Resource):
 		if 'tags' in my_json:
 			tags = my_json['tags']
 		if 'has_media' in my_json:
-			has_media in my_json['has_media']
+			has_media = my_json['has_media']
 
 			
 	
@@ -843,6 +895,26 @@ class Default(Resource):
 	def get(self):
 		headers = {'content-Type':'text/html'}
 		return make_response(render_template('homepage.html'), headers)
+
+
+def associateMedia(media_id, object_id, username):
+	client = getMongoClient()
+	db = client["Project"]
+	media_col = db["media"]
+
+	my_media = media_col.find_one({"media_id": media_id})
+	if not my_media:
+		return "OK"
+	if not my_media['object_id'] is None:
+		print("DUPLICATE EXISTS")
+		return "error"
+	if not username == my_media['username']:
+		print("NOT THE RIGHT USER")
+		return "error"
+	else:
+		media_col.update_one({"media_id":media_id}, {"$set": {"object_id":object_id}})
+		return "OK"
+
 api.add_resource(Default, '/')
 api.add_resource(Homepage, '/homepage')
 api.add_resource(AddUser, '/adduser')
