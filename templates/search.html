@@ -4,8 +4,113 @@
 </head>
 
 <body>
+<script>
+function search()
+{
+	var jsonData = {};
+	var form = new FormData(document.getElementById('searchForm'))
+	tags = form.get("tags");
+	if (tags == "")
+	{
+
+	}
+	else
+		jsonData['tags'] = tags.split(',')
+
+	limit = form.get("limit");
+	jsonData['limit'] = limit
+	timestamp = form.get("timestamp");
+	
+	if (timestamp == "")
+	{
+
+	}
+	else
+	{
+		
+		timestamp = Date.parse(timestamp) / 1000;
+		jsonData['timestamp'] = timestamp
+	}
+	sort_by = form.get("sort_by");
+	jsonData['sort_by'] = sort_by;
+
+	has_media = form.get("has_media");
+	if (has_media == null)
+	{
+	}
+	else
+	{
+		jsonData['has_media'] = true;
+	}
+	accepted = form.get("accepted");
+	if (accepted == null)
+		accepted = false;
+	else
+		jsonData['accepted'] = true;
+
+	query = form.get('query');
+	if (query == "")
+	{
+
+	}
+	else
+		jsonData['q'] = query;
+	console.log(jsonData);
+
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", '/search', true);
+	xhr.setRequestHeader("Content-Type", "application/json");
+	xhr.responseType = 'json';
+	xhr.send(JSON.stringify(jsonData));
+
+	xhr.onreadystatechange = function() {
+		if(xhr.readyState == 4){
+			if(xhr.response['status'] === "error"){
+				alert(xhr.response['error'])
+			}
+			else{
+				questions = xhr.response['questions']
+				var i;
+				var text = ""
+				var mydiv = document.getElementById("searchResults")
+				for (i = 0; i < questions.length; i++)
+				{
+					var aTag = document.createElement('a');
+					question = questions[i];
+					title = question['title']
+					id = question['id']
+					aTag.setAttribute('href', "/view/questions/" + id)
+					aTag.innerHTML = title + "<br>";
+					mydiv.appendChild(aTag);
+				}
+			}
+		}
+
+	}
+
+}
+</script>
+Search for Questions
+<form action = "javascript:;" id = "searchForm" onsubmit ="search()">
+	Number of Results: <input type = "number" name = "limit" value = "25">
+	<br>Search:<br>
+	 <textarea rows = "5" cols = "50" name = "query" placeholder ="Search Query goes here"></textarea>
+	<br>Find Questions from this time and earlier (Optional):<br>
+	<input type = "date" name = "timestamp" >
+	<br>Sort By:<br>
+	 <input type = "radio" name = "sort_by" id="score" value="score" checked>
+	 <label for="score">Score</label>
+	 <input type = "radio" name = "sort_by" id="timestamp" value ="timestamp">
+	 <label for="timestamp">Timestamp</label>
+	<br>Filter by Tags:<br>
+	<textarea rows = "1" cols = "50" name = "tags" placeholder ="write,tags,like,this,tag one,tag two,tag three"></textarea>
+	<br>
+	<input type = "checkbox" name = "has_media" id="has_media" value="has_media">
+	<label for="has_media">Return Questions with media ONLY</label>
+	<input type = "checkbox" name = "accepted" id="accepted" value="accepted">
+	<label for="accepted">Return Questions with Accepted Answers ONLY</label>
+<br>
+<input type = "submit" value = "Submit">
 
 
-<form id = "searchform" action = "javascript:;" onsubmit="callREST()">
-
-<div id = search results> </div>> 		
+<div id = "searchResults"> </div>
