@@ -118,7 +118,7 @@ class GetMedia(Resource):
 def removeMediaByID(media_id):
 
 		
-	client = getMongoConnection()		
+	client = getMongoClient()		
 	db = client["Project"]
 	col = db["media"]
 	my_media = col.find({"media_id": media_id})

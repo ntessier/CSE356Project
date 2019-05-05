@@ -80,7 +80,7 @@ class LoginUser(Resource):
 		print("Attmepted Login: ", username)
 		if not row1:
 			print("no user found")
-			return make_response(jsonify(status="error"), 400)
+			return make_response(jsonify(status="error", error="no user found"), 400)
 		else:
 			if row1['password'] == password and row1['validated'] is True:
 				access_token = create_access_token(identity=row1['username'])
@@ -99,7 +99,7 @@ class LoginUser(Resource):
 #				set_refresh_cookies(resp, refresh_token)
 				return resp
 			else:
-				return make_response(jsonify(status="error"), 400)
+				return make_response(jsonify(status="error",error="user not verified or incorrect password"), 400)
 	def get(self):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('login.html'), headers)
@@ -840,8 +840,8 @@ class SearchQuestion(Resource):
 		return jsonify(status = "OK", questions = results)
 
 	def get(self):
-		#TODO: render UI page
-		return "hello search"
+		headers = {'Content-Type':'text/html'}
+		return make_response(render_template('search.html'), headers)
 
 class Homepage(Resource):
 	def get(self):
