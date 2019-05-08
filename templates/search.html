@@ -17,7 +17,7 @@ function search()
 	else
 		jsonData['tags'] = tags.split(',')
 
-	limit = form.get("limit");
+	limit = parseInt(form.get("limit"));
 	jsonData['limit'] = limit
 	timestamp = form.get("timestamp");
 	
@@ -69,6 +69,7 @@ function search()
 				alert(xhr.response['error'])
 			}
 			else{
+				console.log("made it into readystate 4")
 				questions = xhr.response['questions']
 				var i;
 				var text = ""

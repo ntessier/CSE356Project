@@ -64,7 +64,7 @@ class AddUser(Resource):
 			#end_time = time.time()
 			#REFACTOR new entry in 'user'
 #			mycol.insert_one(dataToInsert)
-			upsertUser(dataToInsert)
+			upsertUserNOW(dataToInsert)
 #			upsertUserNOW(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			#msg = "\nHello " + username + "!\n Please click this link to\
@@ -124,7 +124,7 @@ class VerifyUser(Resource):
 				#REFACTOR update 'validated' in 'user'
 				#mycol.update_one(myquery, { "$set": { "validated" : True} })
 				row['validated'] = True
-				upsertUser(row)
+				upsertUserNOW(row)
 
 				return jsonify(status="OK")
 			else:
