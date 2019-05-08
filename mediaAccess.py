@@ -74,12 +74,12 @@ class AddMedia(Resource):
 	#	print('grabbed session')
 			#	print('generated ID')
 		if error_out:
-			return make_response(jsonify(status="error", error="not logged in"), 400)
+			return make_response(jsonify(status="error", error="not logged in"), 410)
 		print("QUEUING A CASSANDRA WRITE")
 		if file is None:
-			return make_response(jsonify(status="error", error="No file attached!"), 400)
+			return make_response(jsonify(status="error", error="No file attached!"), 420)
 		if filetype is None:
-			return make_response(jsonify(status="error", error="No filetype!"), 400)
+			return make_response(jsonify(status="error", error="No filetype!"), 430)
 		id = generateNewMediaID()
 		queueCassandraWrite(id, file, filetype)
 
