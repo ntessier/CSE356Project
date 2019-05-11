@@ -79,7 +79,8 @@ class AddMedia(Resource):
 		if file is None:
 			return make_response(jsonify(status="error", error="No file attached!"), 420)
 		if filetype is None:
-			return make_response(jsonify(status="error", error="No filetype!"), 430)
+			filetype = "image/png"
+			#return make_response(jsonify(status="error", error="No filetype!"), 430)
 		id = generateNewMediaID()
 		queueCassandraWrite(id, file, filetype)
 
