@@ -20,9 +20,15 @@ from flask_jwt_extended.exceptions import NoAuthorizationError
 
 
 #TODO: make singletons for the cluster and session
+cluster = None
+session = None
 def getCassandraSession():
-	cluster = Cluster(['192.168.122.16'])
-	session = cluster.connect('media')
+	global cluster 
+	global session
+	if not cluster:
+		cluster = Cluster(['192.168.122.16'])
+	if not session:
+		session = cluster.connect('media')
 	return session
 def generateNewMediaID(): #will generate random integer ID while avoiding collisions
 	randomkey= ''.join([random.choice(string.digits) for n in range(16)])
