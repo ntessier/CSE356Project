@@ -113,13 +113,12 @@ class GetMedia(Resource):
 		#check memcache before querying database
 		session = getCassandraSession()
 		rows = session.execute("SELECT id, contents, contenttype FROM images where id = %s", [id])	
-		if rows is not None:
-			return make_response(jsonify(status="error", message="No media found with that id!"), 400)
+		for row in rows:
+			r = make_response(row.contents)
+			r.headers['Content-Type'] = row.contenttype
+			return r
+		return make_response(jsonify(status="error", message="No media found with that id!"), 400)
 		#r = Response(response = row.contents, status=200, mimetype = row.contenttype)
-		row = rows[0]
-		r = make_response(row.contents)
-		r.headers['Content-Type'] = row.contenttype
-		return r
 
 #remove a media file from the database based on a given ID
 #TODO: queue this somehow
