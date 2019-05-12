@@ -14,7 +14,7 @@ from flask_jwt_extended import (jwt_optional, verify_jwt_in_request, set_access_
 import pymongo
 from flask_jwt_extended.view_decorators import _decode_jwt_from_request
 from functools import wraps
-
+from mediaAccess import getCassandraSession
 from bson.json_util import loads, dumps
 import time
 from addUser import AddUser, VerifyUser
@@ -894,6 +894,8 @@ class Reset(Resource):
 		client = getMongoClient()
 		mydb = client['Project']
 		mydb.command("dropDatabase")
+		session = getCassandraSession()
+		session.execute("TRUNCATE images")
 class Default(Resource):
 	def get(self):
 		headers = {'content-Type':'text/html'}
