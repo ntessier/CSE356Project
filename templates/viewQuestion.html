@@ -58,6 +58,21 @@ function acceptAnswer(id){
         }
 }
 function upvoteAnswer(id){
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST",  '/answers/' + id + '/upvote', true)
+        xhr.responseType = 'json';
+        xhr.send();
+
+        xhr.onreadystatechange = function() {
+                if(xhr.readyState == 4){
+                        if(xhr.response['status'] === "error"){
+                                alert(xhr.response['error'])
+                        }
+                        else{
+                                alert("Success! Answer accepted.")
+                        }
+                }
+        }
 
 }
 function downvoteAnswer(id){

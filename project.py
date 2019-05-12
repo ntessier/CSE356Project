@@ -14,7 +14,7 @@ from flask_jwt_extended import (jwt_optional, verify_jwt_in_request, set_access_
 import pymongo
 from flask_jwt_extended.view_decorators import _decode_jwt_from_request
 from functools import wraps
-from mediaAccess import getCassandraSession
+#from mediaAccess import getCassandraSession
 from bson.json_util import loads, dumps
 import time
 from addUser import AddUser, VerifyUser
@@ -53,7 +53,7 @@ def custom_validator(fn):
 			return make_response(jsonify(status="error", error="Trying to access page that requires login"), 400)
 		return fn(*args, **kwargs)   
 	return wrapper
-from mediaAccess import GetMedia, AddMedia, removeMediaByID
+from mediaAccess import GetMedia, AddMedia, removeMediaByID, getCassandraSession
 
 app.config['MONGO_URI'] = os.environ.get('DB')
 app.config['JWT_SECRET_KEY'] = 'SECRET'
