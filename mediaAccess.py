@@ -114,12 +114,6 @@ class GetMedia(Resource):
 		session = getCassandraSession()
 		rows = session.execute("SELECT id, contents, contenttype FROM images where id = %s", [id])
 
-		row = rows[0]
-		r = make_response(row.contents)
-		r.headers['Content-Type'] = row.contenttype
-		return r
-
-	
 		for row in rows:
 			r = make_response(row.contents)
 			r.headers['Content-Type'] = row.contenttype
