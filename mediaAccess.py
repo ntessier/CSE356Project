@@ -113,7 +113,7 @@ class GetMedia(Resource):
 		#check memcache before querying database
 		session = getCassandraSession()
 		rows = session.execute("SELECT id, contents, contenttype FROM images where id = %s", [id])	
-		if not rows:
+		if rows is not None:
 			return make_response(jsonify(status="error", message="No media found with that id!"), 400)
 		#r = Response(response = row.contents, status=200, mimetype = row.contenttype)
 		row = rows[0]
