@@ -40,6 +40,29 @@ function deleteQuestion()
 		}
 	}
 }
+function acceptAnswer(id){
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST",  '/answers/' + id + '/accept', true)
+	xhr.responseType = 'json';
+	xhr.send();
+		
+	xhr.onreadystatechange = function() {
+                if(xhr.readyState == 4){
+                        if(xhr.response['status'] === "error"){
+                                alert(xhr.response['error'])
+                        }
+                        else{
+                                alert("Success! Answer accepted.")
+                        }
+                }
+        }
+}
+function upvoteAnswer(id){
+
+}
+function downvoteAnswer(id){
+
+}
 
 function getQuestion(){
 	//console.log("Made it int ogetQuestion")
@@ -124,6 +147,31 @@ function getAnswersForQuestion(){
 							answerDiv.appendChild(document.createElement("br"))
 						}
 					}
+					var upvote_btn = document.createElement("BUTTON");
+					upvote_btn.innerHTML = "upvote";
+					upvote_btn.onclick = function(){
+						alert("HI");
+					}
+
+					var downvote_btn = document.createElement("BUTTON");
+					downvote_btn.innerHTML = "downvote";
+					downvote_btn.onclick = function(){
+						alert("BYE");
+					}
+					
+					var accept_btn = document.createElement("BUTTON");
+					accept_btn.innerHTML = "Accept";
+					accept_btn.onclick = function(){
+                                                acceptAnswer(answer['id']);
+                                        }
+
+
+					answerDiv.appendChild(upvote_btn);
+					answerDiv.appendChild(downvote_btn);
+					answerDiv.appendChild(document.createElement("br"));
+					answerDiv.appendChild(accept_btn);
+					answerDiv.appendChild(document.createElement("br"));
+					
 				}
 
 				//render the question

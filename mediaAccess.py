@@ -18,8 +18,8 @@ import pymongo
 from flask_jwt_extended.view_decorators import _decode_jwt_from_request
 from flask_jwt_extended.exceptions import NoAuthorizationError
 
-#TODO: remover vvv
 
+#TODO: make singletons for the cluster and session
 def getCassandraSession():
 	cluster = Cluster(['192.168.122.16'])
 	session = cluster.connect('media')
@@ -33,9 +33,10 @@ def generateNewMediaID(): #will generate random integer ID while avoiding collis
 	while coun[0].coun != 0:
 		randomkey = ''.join([random.choice(string.digits) for n in range(16)])
 		coun = session.execute(id_lookup_stmt, [randomkey])
+	#TODO: close the session?
 	return randomkey
 
-#TODO: queue this?
+
 class AddMedia(Resource):
 	#@custom_validator
 	def post(self):
