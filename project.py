@@ -892,8 +892,11 @@ class TokenRefresh(Resource):
 class Reset(Resource):
 	def get(self):
 		client = getMongoClient()
+		#TODO: change this to accomodate for sharding
 		mydb = client['Project']
-		mydb.command("dropDatabase")
+		#mydb.command("dropDatabase")
+		for col_name in mydb.list_collection_names():
+			mydb[col_name].delete_many({})
 		session = getCassandraSession()
 		session.execute("TRUNCATE images")
 class Default(Resource):

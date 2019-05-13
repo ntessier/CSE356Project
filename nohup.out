@@ -63299,4 +63299,83 @@ Hello USER_06362561!
 Receiver in callback is email_16410682
 Msg to send in callback is 
 Hello USER_06362561!
- validation key: <Nbskmu81rqiYiGVH>
+ validation key: <Nbskmu81rqiYiGVH>Traceback (most recent call last):
+  File "consumeMail.py", line 3, in <module>
+    dequeueMail()
+  File "/home/ubuntu/CSE356Project/queueMail.py", line 29, in dequeueMail
+    channel.start_consuming()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 1857, in start_consuming
+    self._process_data_events(time_limit=None)
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 2018, in _process_data_events
+    self.connection.process_data_events(time_limit=time_limit)
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 835, in process_data_events
+    self._dispatch_channel_events()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 567, in _dispatch_channel_events
+    impl_channel._get_cookie()._dispatch_events()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 1485, in _dispatch_events
+    evt.properties, evt.body)
+  File "/home/ubuntu/CSE356Project/queueMail.py", line 21, in callback
+    server.sendmail("ubuntu", receiver, msgToSend)
+  File "/usr/lib/python3.5/smtplib.py", line 876, in sendmail
+    raise SMTPRecipientsRefused(senderrs)
+smtplib.SMTPRecipientsRefused: {'1@1': (501, b'5.1.3 Bad recipient address syntax')}
+Traceback (most recent call last):
+  File "consumeMail.py", line 3, in <module>
+    dequeueMail()
+  File "/home/ubuntu/CSE356Project/queueMail.py", line 29, in dequeueMail
+    channel.start_consuming()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 1857, in start_consuming
+    self._process_data_events(time_limit=None)
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 2018, in _process_data_events
+    self.connection.process_data_events(time_limit=time_limit)
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 835, in process_data_events
+    self._dispatch_channel_events()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 567, in _dispatch_channel_events
+    impl_channel._get_cookie()._dispatch_events()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 1485, in _dispatch_events
+    evt.properties, evt.body)
+  File "/home/ubuntu/CSE356Project/queueMail.py", line 21, in callback
+    server.sendmail("ubuntu", receiver, msgToSend)
+  File "/usr/lib/python3.5/smtplib.py", line 876, in sendmail
+    raise SMTPRecipientsRefused(senderrs)
+smtplib.SMTPRecipientsRefused: {'2@2': (501, b'5.1.3 Bad recipient address syntax')}
+Traceback (most recent call last):
+  File "consumeMail.py", line 3, in <module>
+    dequeueMail()
+  File "/home/ubuntu/CSE356Project/queueMail.py", line 29, in dequeueMail
+    channel.start_consuming()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 1857, in start_consuming
+    self._process_data_events(time_limit=None)
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 2018, in _process_data_events
+    self.connection.process_data_events(time_limit=time_limit)
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 835, in process_data_events
+    self._dispatch_channel_events()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 567, in _dispatch_channel_events
+    impl_channel._get_cookie()._dispatch_events()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 1485, in _dispatch_events
+    evt.properties, evt.body)
+  File "/home/ubuntu/CSE356Project/queueMail.py", line 21, in callback
+    server.sendmail("ubuntu", receiver, msgToSend)
+  File "/usr/lib/python3.5/smtplib.py", line 876, in sendmail
+    raise SMTPRecipientsRefused(senderrs)
+smtplib.SMTPRecipientsRefused: {'3@3': (501, b'5.1.3 Bad recipient address syntax')}
+Traceback (most recent call last):
+  File "consumeMail.py", line 3, in <module>
+    dequeueMail()
+  File "/home/ubuntu/CSE356Project/queueMail.py", line 29, in dequeueMail
+    channel.start_consuming()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 1857, in start_consuming
+    self._process_data_events(time_limit=None)
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 2018, in _process_data_events
+    self.connection.process_data_events(time_limit=time_limit)
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 835, in process_data_events
+    self._dispatch_channel_events()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 567, in _dispatch_channel_events
+    impl_channel._get_cookie()._dispatch_events()
+  File "/home/ubuntu/.local/lib/python3.5/site-packages/pika/adapters/blocking_connection.py", line 1485, in _dispatch_events
+    evt.properties, evt.body)
+  File "/home/ubuntu/CSE356Project/queueMail.py", line 21, in callback
+    server.sendmail("ubuntu", receiver, msgToSend)
+  File "/usr/lib/python3.5/smtplib.py", line 876, in sendmail
+    raise SMTPRecipientsRefused(senderrs)
+smtplib.SMTPRecipientsRefused: {'3@3': (501, b'5.1.3 Bad recipient address syntax')}

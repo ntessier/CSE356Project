@@ -4,7 +4,7 @@ from bson.json_util import dumps
 #import json
  
 def queueWrite(collection, document):
-	connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.122.10'))
+	connection = pika.BlockingConnection(pika.ConnectionParameters(host='130.245.171.185'))
 	channel = connection.channel()
 	channel.queue_declare(queue='mongoWrites', durable=True)
 	message = collection + '@@@' + dumps(document)

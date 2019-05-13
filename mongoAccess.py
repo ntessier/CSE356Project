@@ -87,4 +87,7 @@ def upsertUserNOW(my_user):
 	client = getMongoClient()
 	db = client["Project"]
 	user_col = db["users"]
-	user_col.replace_one({'username': my_user["username"]}, my_user, upsert=True)
+	if "_id" in my_user:
+		user_col.replace_one({'username': my_user["username"]}, my_user, upsert=True)
+	else:
+		user_col.insert_one(my_user)
