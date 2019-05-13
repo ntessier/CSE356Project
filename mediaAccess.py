@@ -129,7 +129,7 @@ def removeMediaByID(media_id):
 	client = getMongoClient()		
 	db = client["Project"]
 	col = db["media"]
-	my_media = col.find({"media_id": media_id})
+	my_media = col.find_one({"media_id": media_id})
 	if not my_media:
 		return "error"
 

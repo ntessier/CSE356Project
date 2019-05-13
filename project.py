@@ -196,7 +196,7 @@ class AddQuestion(Resource):
 		dToInsert['view_count'] = 0
 		dToInsert['answer_count'] = 0
 		dToInsert['timestamp'] = time.time() #time.time() should be a unix timestamp
-		dToInsert['media'] = media
+		dToInsert['media'] = []
 		dToInsert['accepted_answer_id'] = None
 		dToInsert['id'] = generateNewID() 
 		dToInsert['answers'] = []	#empty array of answer IDs
@@ -207,7 +207,8 @@ class AddQuestion(Resource):
 			#associateMedia(media_id, dToInsert['id'])	
 			result = associateMedia(media_id, dToInsert['id'], get_jwt_identity())
 			if result == "error":
-				return make_response(jsonify(status="error", error="media already associated with another object"), 400)
+				return make_response(jsonify(status="error", error="media does not exist or is already associated with another object"), 400)
+		dToInsert['media'] = media
 			
 		#print(dumps(dToInsert))
 		#REFACTOR add entry in 'question'
@@ -911,8 +912,10 @@ def associateMedia(media_id, object_id, username):
 	media_col = db["media"]
 
 	my_media = media_col.find_one({"media_id": media_id})
+
+	#does not exist
 	if not my_media:
-		return "OK"
+		return "error"
 	if not my_media['object_id'] is None:
 		print("DUPLICATE EXISTS")
 		return "error"
