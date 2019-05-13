@@ -99,7 +99,7 @@ class LoginUser(Resource):
 #				set_refresh_cookies(resp, refresh_token)
 				return resp
 			else:
-				return make_response(jsonify(status="error",error="user not verified or incorrect password"), 400)
+				return make_response(jsonify(status="error",error="user not verified or incorrect password"), 401)
 	def get(self):
 		headers = {'Content-Type' : 'text/html'}
 		return make_response(render_template('login.html'), headers)
