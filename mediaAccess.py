@@ -74,7 +74,7 @@ class AddMedia(Resource):
 		#content = json['content']
 		file = request.files['content']
 		filetype = file.content_type
-		#file = file.read()
+		file = file.read()
 		#print(type(file))
 	#	print('grabbed file')
 		session = getCassandraSession()
@@ -90,7 +90,7 @@ class AddMedia(Resource):
 			#return make_response(jsonify(status="error", error="No filetype!"), 430)
 		id = generateNewMediaID()
 		#queueCassandraWrite(id, file, filetype)
-		session.execute("INSERT INTO images(id, contents, contenttype) VALUES (%s, %s, %s)", (id, file, filetype))
+		#session.execute("INSERT INTO images(id, contents, contenttype) VALUES (%s, %s, %s)", (id, file, filetype))
 		client = getMongoClient()
 		db = client["Project"]
 		media_col = db["media"]
@@ -100,7 +100,7 @@ class AddMedia(Resource):
 		dToInsert["username"] = get_jwt_identity()
 		media_col.insert_one(dToInsert)
 
-		#session.execute("INSERT INTO images(id, contents, contenttype) VALUES (%s, %s, %s)", (id, file, filetype))
+		session.execute("INSERT INTO images(id, contents, contenttype) VALUES (%s, %s, %s)", (id, file, filetype))
 	#	print("made it past inserting into database")
 		
 		return jsonify(status="OK", id=id)
