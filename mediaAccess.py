@@ -77,7 +77,7 @@ class AddMedia(Resource):
 		#file = file.read()
 		#print(type(file))
 	#	print('grabbed file')
-		#session = getCassandraSession()
+		session = getCassandraSession()
 	#	print('grabbed session')
 			#	print('generated ID')
 		if error_out:
