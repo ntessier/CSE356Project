@@ -90,7 +90,7 @@ class AddMedia(Resource):
 			#return make_response(jsonify(status="error", error="No filetype!"), 430)
 		id = generateNewMediaID()
 		#queueCassandraWrite(id, file, filetype)
-		session.execute("INSERT INTO images(id, contents, contenttype) VALUES (%s, %s, %s)", (id, image, imagetype))
+		session.execute("INSERT INTO images(id, contents, contenttype) VALUES (%s, %s, %s)", (id, file, filetype))
 		client = getMongoClient()
 		db = client["Project"]
 		media_col = db["media"]
