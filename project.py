@@ -558,9 +558,11 @@ class UpvoteAnswer(Resource):
 		#	return make_response(jsonify(status="error", error="Invalid arguments: upvote not found"), 400)
 
 		my_answer = getAnswerByID(id)
-		my_answer_id = my_answer['id']
 		if not my_answer:
 			return make_response(jsonify(status="error", error="No answer with given ID"), 400)
+		my_answer_id = my_answer['id']
+		#if not my_answer:
+		#	return make_response(jsonify(status="error", error="No answer with given ID"), 400)
 		my_user = getUserByName(my_answer['user'])
 		if not my_user:
 			return make_response(jsonify(status="error", error="No corresponding poster???"), 400)
