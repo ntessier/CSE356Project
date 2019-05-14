@@ -32,8 +32,8 @@ class AddUser(Resource):
 		password = args['password']
 		email = args['email']
 
-		print("Adding a user ", username)
-		print("With email ", email) 
+		#print("Adding a user ", username)
+		#print("With email ", email) 
 
 		#print("username: " + username + " password: " + password + " email: " + email)
 
@@ -43,10 +43,12 @@ class AddUser(Resource):
 		#print("mycol: " + str(mycol))
 		myquery = {"email": email}
 		myquery2 = {"username": username}
+
+		start = time.time()
 		row1 = mycol.find_one(myquery)
 		row2 = mycol.find_one(myquery2)
-		
-				
+		print("ADDUSERQUERIES: ", time.time() = start)
+
 		if not row1 and not row2:
 			#start_time = time.time()
 			dataToInsert = {}
@@ -68,13 +70,13 @@ class AddUser(Resource):
 #			upsertUserNOW(dataToInsert)
 			msg2 = "\nHello " + username + "!\n validation key: <" + dataToInsert['verificationCode'] + ">"
 			#msg = "\nHello " + username + "!\n Please click this link to\
-			print('right above queueMail in addUser')			
+			#print('right above queueMail in addUser')			
 #verify your account for Stack.\n http://130.245.171.188/verify?email=" + email + "&key=" + dataToInsert['verificationCode']
 			queueMail(email, msg2)
 			#print("QUEUED MAIL SUCCESSFULY\n")
 			#end_time = time.time()
 			#print(end_time - start_time)
-			print("NEW USER ADDED", username)
+			#print("NEW USER ADDED", username)
 			return jsonify(status="OK")
 		else:
 			return make_response(jsonify(status="error", error="Account already exists!"), 401)
@@ -111,16 +113,16 @@ class VerifyUser(Resource):
 			print("Failed after many tries, " + email)
 			return make_response(jsonify(status="error", error="Email not found!"), 401)
 		else:
-			print("FOUND USER WHILE VERIFYING: ", row['username'])
+			#print("FOUND USER WHILE VERIFYING: ", row['username'])
 			if row['validated'] is False and row['verificationCode'] == key:
-				print("\n VALIDATED WITH CODE ", row['username'])
+				#print("\n VALIDATED WITH CODE ", row['username'])
 				#REFACTOR update 'validated' in 'user'
 				#mycol.update_one(myquery, { "$set": { "validated" : True} })
 				row['validated'] = True
 				upsertUser(row)
 				return jsonify(status="OK")
 			elif row['validated'] is False and key == 'abracadabra':
-				print("\n VALIDATED SUCCESSFULLY WITH BACKDOOR ",row['username'] )
+				#print("\n VALIDATED SUCCESSFULLY WITH BACKDOOR ",row['username'] )
 				#REFACTOR update 'validated' in 'user'
 				#mycol.update_one(myquery, { "$set": { "validated" : True} })
 				row['validated'] = True

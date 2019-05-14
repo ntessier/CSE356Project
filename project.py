@@ -706,6 +706,8 @@ class AcceptAnswer(Resource):
 	def post(self, id):
 		
 		answer = getAnswerByID(id)
+		if not answer:
+			return make_response(jsonify(status="error", error="No answer with that ID"), 401)
 		question = getQuestionByID(answer['question'])
 		current_user = getUserByName(get_jwt_identity())
 
@@ -715,7 +717,7 @@ class AcceptAnswer(Resource):
 
 		#check for question already closed
 		if question['accepted_answer_id'] is not None:
-			return make_response(jsonify(status="error", error="Question has been closed"), 400)
+			return make_response(jsonify(status="error", error="Question has been closed"), 402)
 
 		#for questionID in current_user['questions']:
 		#	for answerID in question['answers']:
