@@ -19,12 +19,12 @@ def getQuestionByID(my_id):
 
 #Write Question
 def upsertQuestion(my_question):
-	#client = getMongoClient()
-	#db = client["Project"]
-	#question_col = db["questions"]
-	#question_col.replace_one({"id" : my_question['id']}, my_question, upsert=True)
+	client = getMongoClient()
+	db = client["Project"]
+	question_col = db["questions"]
+	question_col.replace_one({"id" : my_question['id']}, my_question, upsert=True)
 
-	queueWrite('questions', my_question)
+	#queueWrite('questions', my_question)
 	#print("inserted a question")
 	#print('queued question: ' + my_question)
 
@@ -49,11 +49,11 @@ def getAnswerByID(my_id):
 
 #Write answer
 def upsertAnswer(my_answer):
-	#client = getMongoClient()
-	#db = client["Project"]
-	#answer_col = db['answers']
-	#answer_col.replace_one({"id" : my_answer['id']}, my_answer, upsert=True)
-	queueWrite('answers', my_answer)
+	client = getMongoClient()
+	db = client["Project"]
+	answer_col = db['answers']
+	answer_col.replace_one({"id" : my_answer['id']}, my_answer, upsert=True)
+	#queueWrite('answers', my_answer)
 	
 #Get User by email
 #return the User document, None if no user exists
@@ -82,12 +82,12 @@ def getUserByName(my_name):
 #Write user
 
 def upsertUser(my_user):
-	#client = getMongoClient()
-	#db = client["Project"]
-	#user_col = db["users"]
-	#user_col.replace_one({'username': my_user["username"]}, my_user, upsert=True)
+	client = getMongoClient()
+	db = client["Project"]
+	user_col = db["users"]
+	user_col.replace_one({'username': my_user["username"]}, my_user, upsert=True)
 
-	queueWrite('users', my_user)
+	#queueWrite('users', my_user)
 
 def upsertUserNOW(my_user):
 	client = getMongoClient()
