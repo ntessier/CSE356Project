@@ -234,7 +234,7 @@ class AddQuestion(Resource):
 class GetQuestion(Resource):
 	@jwt_optional
 	def get(self, id):
-		print("STARTING GET QUESTION")
+		#print("STARTING GET QUESTION")
 		visit = {}
 		username = get_jwt_identity()
 		if username is None: #then we should check their IP 
@@ -410,8 +410,8 @@ class UpvoteQuestion(Resource):
 		#	return make_response(jsonify(status="error", error="Invalid arguments: upvote not found"), 400)
 
 		my_question = getQuestionByID(id)
-		print("vote = " + str(vote))
-		print("question by ID of " + id + " is " + str(my_question))
+		#print("vote = " + str(vote))
+		#print("question by ID of " + id + " is " + str(my_question))
 		my_question_id = my_question['id']
 		if not my_question:
 			return make_response(jsonify(status="error", error="No question with given ID"), 400)
@@ -420,13 +420,13 @@ class UpvoteQuestion(Resource):
 			return make_response(jsonify(status="error", error="No corresponding poster???"), 400)
 
 		voting_user = getUserByName(get_jwt_identity())
-		print("voting_user is " + voting_user['username'])
+		#print("voting_user is " + voting_user['username'])
 		#TODO: call vote functions
 		if vote == True:
-			print("about to upvote")
+			#print("about to upvote")
 			upvote_object(voting_user, my_question, my_user)
 		else:
-			print("about to downvote")
+			#print("about to downvote")
 			downvote_object(voting_user, my_question, my_user)
 		return jsonify(status = "OK")
 
@@ -590,12 +590,12 @@ def upvote_object(voter, obj, obj_owner):
 
 	#remove downvote
 	if my_id in voter['waived_downvoted']:
-		print("Removing waived downvote")
+		#print("Removing waived downvote")
 		obj['score'] += 1
 		voter['waived_downvoted'].remove(my_id)
 		#col.update_one({"username":voter['username']}, {"$pull":{"waived_downvoted":my_id}})
 	elif obj['id'] in voter['downvoted']:
-		print("Removing normal downvote")
+		#print("Removing normal downvote")
 		obj['score'] += 1
 		voter['downvoted'].remove(my_id)
 		#col.update_one({"username":voter['username']}, {"$pull":{"downvoted":my_id}})
@@ -604,7 +604,7 @@ def upvote_object(voter, obj, obj_owner):
 	#unupvote
 	if obj['id'] in voter['upvoted']:
 		obj['score'] -= 1
-		print("removing upvote")
+		#print("removing upvote")
 		voter['upvoted'].remove(obj['id'])
 		#col.update_one({"username":voter['username']}, {"$pull":{"upvoted":my_id}})
 		if obj_owner['reputation'] >= 2:
@@ -613,14 +613,14 @@ def upvote_object(voter, obj, obj_owner):
 		#TODO: consider waiving removal for low rep user?
 	#upvote	
 	else:
-		print('name of voter is ' + voter['username'])
-		print("NORMAL UPVOTE")
+		#print('name of voter is ' + voter['username'])
+		#print("NORMAL UPVOTE")
 		#increment owner rep. increment object score. add to "upvoted" list
 		obj['score'] += 1
 		obj_owner['reputation'] += 1
 		#obj['user']['reputation'] = obj_owner['reputation']
 		voter['upvoted'].append(obj['id'])
-		print('Voters upvoted array after appending id ' + str(voter['upvoted']))
+		#print('Voters upvoted array after appending id ' + str(voter['upvoted']))
 		#col.update_one({"username":voter['username']}, {"$push":{"upvoted":my_id}})	
 	
 	#print(voter)
@@ -630,7 +630,7 @@ def upvote_object(voter, obj, obj_owner):
 	else:
 		upsertUser(voter)
 		upsertUser(obj_owner)
-	print("USERNAME OF VOTER: ", voter["username"])
+	#print("USERNAME OF VOTER: ", voter["username"])
 	#col.update_one({"username":voter['username']}, {"$set":{"upvoted":voter['upvoted']}})
 	#col.update_one({"username":voter['username']}, {"$set":{"downvoted":voter['downvoted']}})
 	#col.update_one({"username":voter['username']}, {"$set":{"waived_downvoted":voter['waived_downvoted']}})
@@ -648,7 +648,7 @@ def downvote_object(voter, obj, obj_owner):
 	my_id = obj['id']
 	#remove upvote
 	if my_id in voter['upvoted']:
-		print("decrementing for upvote removal")
+		#print("decrementing for upvote removal")
 		obj['score'] -= 1
 		voter['upvoted'].remove(my_id)
 		if obj_owner['reputation'] >= 2:
@@ -674,7 +674,7 @@ def downvote_object(voter, obj, obj_owner):
 
 	#downvote	
 	else:
-		print("DECREMENTING SCORE FOR DV")
+		#print("DECREMENTING SCORE FOR DV")
 		obj['score'] -= 1
 		if obj_owner['reputation'] < 2:
 			#do nothing to rep. add to "waived" list
