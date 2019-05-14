@@ -74,7 +74,7 @@ class AddMedia(Resource):
 		#content = json['content']
 		file = request.files['content']
 		filetype = file.content_type
-		file = file.read()
+		#file = file.read()
 		#print(type(file))
 	#	print('grabbed file')
 		#session = getCassandraSession()
