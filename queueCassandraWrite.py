@@ -2,7 +2,9 @@ import pika
 #import cassandra session
 #from mediaAccess import getCassandraSession
 import base64
+import time
 def queueCassandraWrite(id, image, imagetype):
+	start = time.time()
 	connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.122.38'))
 	channel = connection.channel()
 	channel.queue_declare(queue='cassandraWrites', durable=True)
@@ -10,8 +12,11 @@ def queueCassandraWrite(id, image, imagetype):
 	#print(encoded_image_string)
 	#print(type(encoded_image_string))
 	message = id + '@@@' + encoded_image_string + '@@@' + imagetype
+	pub_start = time.time()
 	channel.basic_publish(exchange = "", routing_key='cassandraWrites', body = message,properties = pika.BasicProperties(delivery_mode=2))
+	print("CASSANDRAPUB: ", time.time() - pub_start) 
 	connection.close()
+	print("CASSANDRACON: ", time.time() - start)
 #def callback(ch,method, properties, body):
 	#in callback, access the cassadnra database and insert the body into it...
 	#this takes place in the cassandra instance

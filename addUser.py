@@ -47,7 +47,7 @@ class AddUser(Resource):
 		start = time.time()
 		row1 = mycol.find_one(myquery)
 		row2 = mycol.find_one(myquery2)
-		print("ADDUSERQUERIES: ", time.time() - start)
+		#print("ADDUSERQUERIES: ", time.time() - start)
 
 		if not row1 and not row2:
 			#start_time = time.time()

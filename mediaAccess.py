@@ -55,7 +55,7 @@ class AddMedia(Resource):
 			#response = Response()
 			#response.headers.add('content-length', '71')
 			error_out = True
-			print("plan to error out")
+			#print("plan to error out")
 		#if error_out:
 			#return jsonify(status="OK", id=id)
 		
@@ -66,7 +66,7 @@ class AddMedia(Resource):
 		#print(request.headers)
 		#for cookie in request.cookies:
 		#	print("COOKIE FOUND FOR MEDIA: ", cookie)
-		print("MADE IT INTO ADDMEDIA")
+		#print("MADE IT INTO ADDMEDIA")
 		#if request.is_json:
 		#	json = request.get_json()
 		#else:
@@ -82,7 +82,7 @@ class AddMedia(Resource):
 			#	print('generated ID')
 		if error_out:
 			return make_response(jsonify(status="error", error="not logged in"), 410)
-		print("QUEUING A CASSANDRA WRITE")
+		#print("QUEUING A CASSANDRA WRITE")
 		if file is None:
 			return make_response(jsonify(status="error", error="No file attached!"), 420)
 		if filetype is None:

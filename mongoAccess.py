@@ -7,14 +7,14 @@ import time
 #return the Question document, None if no question exists
 	#NOT responsible for updating the view count
 def getQuestionByID(my_id):
-#	start = time.time()
+	start = time.time()
 	client = getMongoClient()
 	db = client["Project"]
 	question_col = db["questions"]
 	my_query = {"id" : my_id}
 	my_question = question_col.find_one(my_query)
-#	end = time.time()
-#	print("QUESTIONTIME", end-start)
+	end = time.time()
+	print("QUESTIONTIME", end-start)
 	return my_question
 
 #Write Question
@@ -37,14 +37,14 @@ def upsertQuestionNOW(my_question):
 #Get Answer by ID
 #return the Answer document, None if no answer exists
 def getAnswerByID(my_id):
-#	start=time.time()
+	start=time.time()
 	client = getMongoClient()
 	db = client["Project"]
 	answer_col = db['answers']
 	my_query = {"id" : my_id}
 	my_answer = answer_col.find_one(my_query)
-#	end=time.time()
-#	print("ANSWERTIME",end-start)
+	end=time.time()
+	print("ANSWERTIME",end-start)
 	return my_answer
 
 #Write answer
@@ -58,25 +58,25 @@ def upsertAnswer(my_answer):
 #Get User by email
 #return the User document, None if no user exists
 def getUserByEmail(my_email):
-#	start=time.time()
+	start=time.time()
 	client = getMongoClient()
 	db = client["Project"]
 	user_col = db["users"]
 	my_query = {"email" : my_email}
 	my_user = user_col.find_one(my_query)
-#	print("USERTIME(email)", time.time()-start)
+	print("USERTIME(email)", time.time()-start)
 	return my_user
 
 #Get User by username
 #return the User document, None if no user exists
 def getUserByName(my_name):
-#	start=time.time()
+	start=time.time()
 	client = getMongoClient()
 	db = client["Project"]
 	user_col = db["users"]
 	my_query = {"username" : my_name}
 	my_user = user_col.find_one(my_query)
-#	print("USERTIME(name)", time.time()-start)
+	print("USERTIME(name)", time.time()-start)
 	return my_user
 
 #Write user
