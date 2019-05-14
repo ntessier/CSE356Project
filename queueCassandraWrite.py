@@ -3,7 +3,7 @@ import pika
 #from mediaAccess import getCassandraSession
 import base64
 def queueCassandraWrite(id, image, imagetype):
-	connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.122.16'))
+	connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.122.38'))
 	channel = connection.channel()
 	channel.queue_declare(queue='cassandraWrites', durable=True)
 	encoded_image_string = base64.b64encode(image.read()).decode()
