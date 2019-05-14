@@ -44,7 +44,7 @@ def getAnswerByID(my_id):
 	my_query = {"id" : my_id}
 	my_answer = answer_col.find_one(my_query)
 #	end=time.time()
-	print("ANSWERTIME",end-start)
+#	print("ANSWERTIME",end-start)
 	return my_answer
 
 #Write answer
