@@ -26,7 +26,7 @@ def getCassandraSession():
 	global cluster 
 	global session
 	if not cluster:
-		cluster = Cluster(['192.168.122.16'])
+		cluster = Cluster(['192.168.122.16','130.245.171.186', '130.245.171.183'])
 	if not session:
 		session = cluster.connect('media')
 	return session
