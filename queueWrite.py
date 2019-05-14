@@ -12,9 +12,9 @@ def queueWrite(collection, document):
 	connection.close()
 def callback(ch,method,properties, body):
 	body = body.decode('utf-8')
-	#items = body.split('@@@')
-	#collection = items[0]
-	#document = json.loads(items[1])
+	items = body.split('@@@', 1)
+	collection = items[0]
+	document = json.loads(items[1])
 	#connect to mongo db / collection
 	
 	ch.basic_ack(delivery_tag = method.delivery_tag)
