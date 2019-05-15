@@ -12,7 +12,7 @@ def queueCassandraWrite(id, image, imagetype):
 	global channel
 	if connection is None:
 		connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.122.38'))
-	if channel is None:
+	if channel is None or channel.is_closed:
 		channel = connection.channel()
 	channel.queue_declare(queue='cassandraWrites', durable=True)
 	encoded_image_string = base64.b64encode(image.read()).decode()
