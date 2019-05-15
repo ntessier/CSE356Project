@@ -21,9 +21,9 @@ def queueCassandraWrite(id, image, imagetype):
 	message = id + '@@@' + encoded_image_string + '@@@' + imagetype
 	pub_start = time.time()
 	channel.basic_publish(exchange = "", routing_key='cassandraWrites', body = message,properties = pika.BasicProperties(delivery_mode=2))
-	print("CASSANDRAPUB: ", time.time() - pub_start) 
+	#print("CASSANDRAPUB: ", time.time() - pub_start) 
 	#connection.close()
-	print("CASSANDRACON: ", time.time() - start)
+	#print("CASSANDRACON: ", time.time() - start)
 #def callback(ch,method, properties, body):
 	#in callback, access the cassadnra database and insert the body into it...
 	#this takes place in the cassandra instance

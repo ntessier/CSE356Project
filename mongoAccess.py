@@ -14,7 +14,7 @@ def getQuestionByID(my_id):
 	my_query = {"id" : my_id}
 	my_question = question_col.find_one(my_query)
 	end = time.time()
-	print("QUESTIONTIME", end-start)
+	#print("QUESTIONTIME", end-start)
 	return my_question
 
 #Write Question
@@ -44,7 +44,7 @@ def getAnswerByID(my_id):
 	my_query = {"id" : my_id}
 	my_answer = answer_col.find_one(my_query)
 	end=time.time()
-	print("ANSWERTIME",end-start)
+	#print("ANSWERTIME",end-start)
 	return my_answer
 
 #Write answer
@@ -64,7 +64,7 @@ def getUserByEmail(my_email):
 	user_col = db["users"]
 	my_query = {"email" : my_email}
 	my_user = user_col.find_one(my_query)
-	print("USERTIME(email)", time.time()-start)
+	#print("USERTIME(email)", time.time()-start)
 	return my_user
 
 #Get User by username
@@ -76,7 +76,7 @@ def getUserByName(my_name):
 	user_col = db["users"]
 	my_query = {"username" : my_name}
 	my_user = user_col.find_one(my_query)
-	print("USERTIME(name)", time.time()-start)
+	#print("USERTIME(name)", time.time()-start)
 	return my_user
 
 #Write user
