@@ -3,17 +3,17 @@ import pika
 #from mediaAccess import getCassandraSession
 import base64
 import time
-channel = None
-connection = None
+#channel = None
+#connection = None
 def queueCassandraWrite(id, image, imagetype):
-	start = time.time()
+	#start = time.time()
 
-	global connection
-	global channel
-	if connection is None or connection.is_closed:
-		connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.122.38', heartbeat=0))
-	if channel is None or channel.is_closed:
-		channel = connection.channel()
+	#global connection
+	#global channel
+	#if connection is None or connection.is_closed:
+	connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.122.38'))
+	#if channel is None or channel.is_closed:
+	channel = connection.channel()
 	channel.queue_declare(queue='cassandraWrites', durable=True)
 	encoded_image_string = base64.b64encode(image.read()).decode()
 	#print(encoded_image_string)
@@ -22,7 +22,7 @@ def queueCassandraWrite(id, image, imagetype):
 	pub_start = time.time()
 	channel.basic_publish(exchange = "", routing_key='cassandraWrites', body = message,properties = pika.BasicProperties(delivery_mode=2))
 	#print("CASSANDRAPUB: ", time.time() - pub_start) 
-	#connection.close()
+	connection.close()
 	#print("CASSANDRACON: ", time.time() - start)
 #def callback(ch,method, properties, body):
 	#in callback, access the cassadnra database and insert the body into it...
