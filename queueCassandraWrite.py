@@ -10,7 +10,7 @@ def queueCassandraWrite(id, image, imagetype):
 
 	global connection
 	global channel
-	if connection is None:
+	if connection is None or connection.is_closed:
 		connection = pika.BlockingConnection(pika.ConnectionParameters(host='192.168.122.38'))
 	if channel is None or channel.is_closed:
 		channel = connection.channel()
